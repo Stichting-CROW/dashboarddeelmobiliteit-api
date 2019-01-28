@@ -1,0 +1,16 @@
+SELECT * FROM 
+	(SELECT CASE WHEN bike_id = lag(bike_id) THEN  ST_DistanceSphere(location, lag(location) 
+	OVER (ORDER BY bike_id, last_time_imported ))
+	as distance 
+	END
+	FROM bike_detection) 
+	as s1 
+WHERE s1.distance > 200;
+
+
+SELECT distinct ON (bike_id) last_time_imported, bike_id,
+ST_Y(location), ST_X(location)
+FROM bike_detection
+WHERE ST_WITHIN(location, 
+	(SELECT geom from municipalities where gm_code='GM0479' and geom is not null limit 1) )
+ORDER BY bike_id, last_time_imported DESC;
