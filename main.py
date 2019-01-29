@@ -4,6 +4,7 @@ from datetime import date
 import psycopg2
 import os
 
+# Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
     def default(self, obj):
         try:
@@ -19,8 +20,9 @@ class CustomJSONEncoder(JSONEncoder):
 app = Flask(__name__)
 app.json_encoder = CustomJSONEncoder
 
-conn_str = "dbname=deelfietsdashboard"
 
+# Initialisation
+conn_str = "dbname=deelfietsdashboard"
 if "ip" in os.environ:
     conn_str += " host={} ".format(os.environ['ip'])
 if "password" in os.environ:
@@ -29,8 +31,6 @@ if "password" in os.environ:
 
 conn = psycopg2.connect(conn_str)
 cur = conn.cursor()
-
-
 
 @app.route("/cycles")
 def bike_locations(): 
@@ -57,12 +57,18 @@ def serialize_location(result):
 
 def get_bicycles_in_municipality(municipality):
     stmt = """SELECT distinct ON (bike_id) last_time_imported, bike_id,
-ST_Y(location), ST_X(location), system_id
-FROM bike_detection
-WHERE ST_WITHIN(location, 
-	(SELECT geom from municipalities where gm_code='GM0479' and geom is not null limit 1) )
-ORDER BY bike_id, last_time_imported DESC"""
-    cur.execute(stmt)
+    ST_Y(location), ST_X(location), system_id
+    FROM (SELECT distinct ON (bike_id) last_time_imported, bike_id, system_id, location
+        FROM bike_detection
+        ORDER BY bike_id, last_time_imported DESC) as q1
+        WHERE 
+        ST_WITHIN(q1.location, 
+            (SELECT geom 
+            FROM municipalities 
+            WHERE gm_code=%s 
+            AND geom IS NOT null 
+            LIMIT 1) );"""
+    cur.execute(municipality, (municipality,))
     return cur.fetchall()
 
 def get_all_bicycles():
@@ -72,5 +78,3 @@ def get_all_bicycles():
             ORDER BY bike_id, last_time_imported DESC"""
     cur.execute(stmt)
     return cur.fetchall()
-
-
