@@ -23,7 +23,7 @@ app.json_encoder = CustomJSONEncoder
 
 
 # Initialisation
-conn_str = "dbname=deelfietsdashboard2"
+conn_str = "dbname=deelfietsdashboard"
 if "ip" in os.environ:
     conn_str += " host={} ".format(os.environ['ip'])
 if "password" in os.environ:
