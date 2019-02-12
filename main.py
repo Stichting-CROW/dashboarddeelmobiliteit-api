@@ -3,6 +3,7 @@ from flask.json import JSONEncoder
 from datetime import date
 import psycopg2
 import os
+import json
 
 # Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
@@ -22,7 +23,7 @@ app.json_encoder = CustomJSONEncoder
 
 
 # Initialisation
-conn_str = "dbname=deelfietsdashboard"
+conn_str = "dbname=deelfietsdashboard2"
 if "ip" in os.environ:
     conn_str += " host={} ".format(os.environ['ip'])
 if "password" in os.environ:
@@ -34,7 +35,14 @@ cur = conn.cursor()
 
 @app.route("/cycles")
 def bike_locations(): 
-    if request.args.get('gm_code'):
+  
+    if "sw_lng" in request.args and "sw_lat" in request.args and "ne_lng" in request.args and "ne_lat" in request.args:
+        result = get_bicycles_within_bounding_box(
+            request.args.get("sw_lng"),
+            request.args.get("sw_lat"),
+            request.args.get("ne_lng"),
+            request.args.get("ne_lat"))
+    elif request.args.get('gm_code'):
         result = get_bicycles_in_municipality(request.args.get('gm_code'))
     else:
         result = get_all_bicycles()
@@ -43,6 +51,8 @@ def bike_locations():
     output["bicycles"] = []
     for record in result:
         output["bicycles"].append(serialize_location(record))
+
+    conn.commit()
     return jsonify(output)
 
 def serialize_location(result):
@@ -53,28 +63,75 @@ def serialize_location(result):
     data["location"]["latitude"] = result[2] 
     data["location"]["longitude"] = result[3]
     data["system_id"] = result[4]
+    data["timestamp_end_last_trip"] = result[5]
+    data["last_trip_id"] = result[6]
     return data
 
+
+def get_bicycles_within_bounding_box(sw_lng, sw_lat, ne_lng, ne_lat):
+    stmt = """
+        SELECT last_time_imported, last_detection_bike.bike_id,
+            ST_Y(location), ST_X(location), last_detection_bike.system_id, 
+            end_time, trip_id
+	    FROM last_detection_bike 
+        LEFT JOIN last_trip_bike
+        ON last_detection_bike.bike_id = last_trip_bike.bike_id
+        WHERE location && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
+    """
+    try:
+        cur.execute(stmt, (sw_lng, sw_lat, ne_lng, ne_lat))
+    except:
+        conn.rollback()
+    return cur.fetchall()
+
 def get_bicycles_in_municipality(municipality):
-    stmt = """SELECT distinct ON (bike_id) last_time_imported, bike_id,
-    ST_Y(location), ST_X(location), system_id
-    FROM (SELECT distinct ON (bike_id) last_time_imported, bike_id, system_id, location
-        FROM bike_detection
-        ORDER BY bike_id, last_time_imported DESC) as q1
-        WHERE 
-        ST_WITHIN(q1.location, 
-            (SELECT geom 
-            FROM municipalities 
-            WHERE gm_code=%s 
-            AND geom IS NOT null 
-            LIMIT 1) );"""
-    cur.execute(municipality, (municipality,))
+    stmt = """SELECT last_time_imported, q1.bike_id,
+        ST_Y(location), ST_X(location), q1.system_id, 
+        end_time, trip_id 
+        FROM last_detection_bike as q1
+        JOIN (SELECT bike_id, sample_id
+            FROM last_detection_bike as q1
+            WHERE
+            ST_WITHIN(location, 
+                (SELECT geom 
+                FROM municipalities 
+                WHERE gm_code=%s
+                AND geom IS NOT null 
+                LIMIT 1) )) as q2
+        ON q1.bike_id = q2.bike_id AND q1.sample_id = q2.sample_id
+        LEFT JOIN last_trip_bike
+        ON q1.bike_id = last_trip_bike.bike_id"""
+    cur.execute(stmt, (municipality,))
+
     return cur.fetchall()
 
 def get_all_bicycles():
-    stmt = """SELECT distinct ON (bike_id) last_time_imported, bike_id,
-            ST_Y(location), ST_X(location), system_id
-            FROM bike_detection
-            ORDER BY bike_id, last_time_imported DESC"""
+    stmt = """SELECT last_time_imported, last_detection_bike.bike_id,
+            ST_Y(location), ST_X(location), last_detection_bike.system_id, 
+            end_time, trip_id 
+            FROM last_detection_bike
+            LEFT JOIN last_trip_bike
+            ON last_detection_bike.bike_id = last_trip_bike.bike_id"""
     cur.execute(stmt)
     return cur.fetchall()
+
+@app.route("/area")
+def get_areas(): 
+    output = {}
+    if request.args.get('gm_code'):
+        area = get_municipality_area(request.args.get('gm_code'))[0]
+        if area:
+            output["geojson"] = json.loads(area)
+            output["gm_code"] = request.args.get('gm_code')
+
+    conn.commit()
+    return jsonify(output)
+
+def get_municipality_area(municipality):
+    stmt = """
+        SELECT ST_AsGeoJSON(geom)
+        FROM municipalities
+        WHERE gm_code = %s and geom is not null"""
+    cur.execute(stmt, (municipality,))
+    return cur.fetchone()
+    

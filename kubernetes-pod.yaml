@@ -7,7 +7,7 @@ metadata:
 spec:
   containers:
   - name: dashboard-api
-    image: registry.gitlab.com/bikedashboard/dashboard-api:0.1.4
+    image: registry.gitlab.com/bikedashboard/dashboard-api:0.1.8
     env:
       - name: ip
         value: "10.133.75.95"
