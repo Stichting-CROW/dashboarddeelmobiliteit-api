@@ -7,6 +7,7 @@ class DataFilter():
         self.timestamp = None
         self.start_time = None
         self.end_time = None
+        self.gm_code = None
 
     def add_zones(self, args):
         if args.get("zone_ids"):
@@ -45,6 +46,16 @@ class DataFilter():
     def get_end_time(self):
         return self.end_time
 
+    def add_gmcode(self, args):
+        if args.get("gm_code"):
+            self.gm_code = args.get("gm_code")
+
+    def get_gmcode(self):
+        return self.gm_code
+        
+    def has_gmcode(self):
+        return self.gm_code != None
+
     @staticmethod
     def build(args):
         filter = DataFilter()
@@ -52,6 +63,7 @@ class DataFilter():
         filter.add_timestamp(args)
         filter.add_start_time(args)
         filter.add_end_time(args)
+        filter.add_gmcode(args)
 
         return filter
 

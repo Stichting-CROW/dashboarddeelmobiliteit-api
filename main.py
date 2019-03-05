@@ -179,13 +179,14 @@ def get_trips():
 
 @app.route("/zones")
 def get_zones():
-    try:
-        zones = tuple(request.args.get("zone_ids").split(","))
-    except:
-        raise InvalidUsage('No or incorrect zone_ids', status_code=400)
-    geometry = zoneAdapter.get_zones(zones)
+    d_filter = data_filter.DataFilter.build(request.args)
+    if not (d_filter.has_gmcode and d_filter.has_zone_filter):
+        raise InvalidUsage("No gm_code or zone_ids.", status_code=400)
 
-    return jsonify(geometry)
+    result = {}
+    result["zones"] = zoneAdapter.get_zones(d_filter)
+
+    return jsonify(result)
 
 @app.route("/zone/<zone_id>")
 def zone():

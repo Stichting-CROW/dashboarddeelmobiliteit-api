@@ -19,8 +19,8 @@ class ParkEvents():
 	    (SELECT st_union(area) 
 	    FROM zones WHERE zone_id IN %s)));
         """
-        cur.execute(stmt, (d_filter.get_timestamp(), d_filter.get_timestamp(),
-            d_filter.has_zone_filter(), d_filter.get_zones() ))
+        cur.execute(stmt, (d_filter.get_timestamp(), d_filter.get_timestamp(), 
+            d_filter.has_zone_filter(), d_filter.get_zones()))
         return self.serialize_park_events(cur.fetchall())
 
     def serialize_park_events(self, park_events):

@@ -6,14 +6,19 @@ class Zones():
     def __init__(self, conn):
         self.conn = conn
 
-    def get_zones(self, zone_ids):
+    def get_zones(self, d_filter):
         cur = self.conn.cursor()
         stmt = """ 
-        SELECT zone_id, ST_AsGeoJSON(area), name, owner
+        SELECT zone_id, ST_AsGeoJSON(area), name, owner,
+        municipality, zone_type
         FROM zones
-        WHERE zone_id in %s
+        WHERE (false = %s or zone_id in %s)
+        AND (false = %s or municipality = %s)
         """
-        cur.execute(stmt, (zone_ids,))
+        print( (d_filter.has_zone_filter(), d_filter.get_zones(),
+            d_filter.has_gmcode(), d_filter.get_gmcode()))
+        cur.execute(stmt, (d_filter.has_zone_filter(), d_filter.get_zones(),
+            d_filter.has_gmcode(), d_filter.get_gmcode()))
         self.conn.commit()
         return self.serialize_zones(cur.fetchall())
 
@@ -29,12 +34,13 @@ class Zones():
         INSERT INTO zones
         (area, name, owner)
         VALUES
-        (ST_SETSRID(ST_GeomFromGeoJSON(%s), 4326), %s, %s)
+        (ST_SET_SRID(ST_GeomFromGeoJSON(%s), 4326), %s, %s)
         RETURNING zone_id
         """
         cur.execute(stmt, (geojson, data.get("name"), None))
-        self.conn.commit()
+
         data["zone_id"] = cur.fetchone()[0]
+        self.conn.commit()
         return data, None
         
 
