@@ -205,9 +205,9 @@ parkEventsAdapter = park_events.ParkEvents(conn)
 @app.route("/park_events")
 def get_park_events():
     d_filter = data_filter.DataFilter.build(request.args)
-    result = parkEventsAdapter.get_park_events(d_filter)
 
-
+    result = {}
+    result["park_events"] = parkEventsAdapter.get_park_events(d_filter) 
     return jsonify(result)
 
 
