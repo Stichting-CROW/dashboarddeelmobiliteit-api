@@ -1,7 +1,6 @@
 SELECT * FROM 
 	(SELECT CASE WHEN bike_id = lag(bike_id) THEN  ST_DistanceSphere(location, lag(location) 
-	OVER (ORDER BY bike_id, last_time_imported ))
-	as distance 
+	OVER (ORDER BY bike_id, last_time_imported )) 
 	END
 	FROM bike_detection) 
 	as s1 
@@ -14,3 +13,34 @@ FROM bike_detection
 WHERE ST_WITHIN(location, 
 	(SELECT geom from municipalities where gm_code='GM0479' and geom is not null limit 1) )
 ORDER BY bike_id, last_time_imported DESC;
+
+
+
+SELECT * FROM 
+	SELECT (CASE WHEN bike_id = lag(bike_id) THEN  ST_DistanceSphere(location, lag(location) 
+	OVER (ORDER BY bike_id, last_time_imported )) 
+	END
+	FROM bike_detection) 
+	as s1 
+WHERE s1.distance > 200;
+
+
+SELECT system_id, bike_id, 
+	ST_Y(location), ST_X(location), 
+	start_time, end_time
+FROM park_events
+WHERE start_time < %s 
+AND (end_time > %s OR end_time is null)
+AND (true = %s or ST_WITHIN(location, 
+	(SELECT st_union(area) 
+	FROM zones WHERE zone_id IN %s));
+
+SELECT system_id, bike_id, 
+	ST_Y(location), ST_X(location), 
+	start_time, end_time
+FROM park_events
+WHERE start_time < NOW() 
+AND (end_time > NOW() OR end_time is null)
+AND (true = false or ST_WITHIN(location, 
+	(SELECT st_union(area) 
+	FROM zones WHERE zone_id IN (1,3))));

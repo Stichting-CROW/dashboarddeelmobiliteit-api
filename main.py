@@ -1,9 +1,15 @@
 from flask import Flask, jsonify, request
 from flask.json import JSONEncoder
 from datetime import date
+import datetime
 import psycopg2
 import os
 import json
+
+import trips
+import zones
+import park_events
+import data_filter
 
 # Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
@@ -18,12 +24,37 @@ class CustomJSONEncoder(JSONEncoder):
             return list(iterable)
         return JSONEncoder.default(self, obj)
 
+class InvalidUsage(Exception):
+    status_code = 400
+
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
+
 app = Flask(__name__)
 app.json_encoder = CustomJSONEncoder
+
+@app.errorhandler(InvalidUsage)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
 
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
+if "dev" in os.environ:
+    conn_str = "dbname=deelfietsdashboard2"
+
 if "ip" in os.environ:
     conn_str += " host={} ".format(os.environ['ip'])
 if "password" in os.environ:
@@ -32,6 +63,8 @@ if "password" in os.environ:
 
 conn = psycopg2.connect(conn_str)
 cur = conn.cursor()
+tripAdapter = trips.Trips(conn)
+zoneAdapter = zones.Zones(conn)
 
 @app.route("/cycles")
 def bike_locations(): 
@@ -134,4 +167,48 @@ def get_municipality_area(municipality):
         WHERE gm_code = %s and geom is not null"""
     cur.execute(stmt, (municipality,))
     return cur.fetchone()
-    
+
+@app.route("/trips")
+def get_trips():
+    print(request.args)
+    d_filter = data_filter.DataFilter.build(request.args)
+
+    result = {}
+    result["trips"] = tripAdapter.get_trips(d_filter)
+    return jsonify(result)
+
+@app.route("/zones")
+def get_zones():
+    try:
+        zones = tuple(request.args.get("zone_ids").split(","))
+    except:
+        raise InvalidUsage('No or incorrect zone_ids', status_code=400)
+    geometry = zoneAdapter.get_zones(zones)
+
+    return jsonify(geometry)
+
+@app.route("/zone/<zone_id>")
+def zone():
+    if request.method == 'GET':
+        result = zoneAdapter.get_zones(zones)
+        return jsonify(result)
+
+@app.route("/zone", methods=['PUT', 'POST'])
+def insert_zone():
+    result, err = zoneAdapter.create_zone(request.data)
+    if err:
+        raise InvalidUsage(err, status_code=400)
+    return jsonify(result), 201
+
+parkEventsAdapter = park_events.ParkEvents(conn)
+
+@app.route("/park_events")
+def get_park_events():
+    d_filter = data_filter.DataFilter.build(request.args)
+    result = parkEventsAdapter.get_park_events(d_filter)
+
+
+    return jsonify(result)
+
+
+
