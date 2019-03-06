@@ -16,7 +16,7 @@ class Trips():
         )
 
         SELECT system_id, bike_id, st_y(start_location), st_x(start_location), 
-        st_y(end_location), st_x(start_location),  start_time, end_time, trip_id 
+        st_y(end_location), st_x(end_location),  start_time, end_time, trip_id 
         FROM trips, temp_a
         WHERE 
         start_time >= %s
