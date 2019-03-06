@@ -180,11 +180,14 @@ def get_trips():
 @app.route("/zones")
 def get_zones():
     d_filter = data_filter.DataFilter.build(request.args)
-    if not (d_filter.has_gmcode and d_filter.has_zone_filter):
+    if not (d_filter.has_gmcode() or d_filter.has_zone_filter()):
         raise InvalidUsage("No gm_code or zone_ids.", status_code=400)
-
+    
     result = {}
-    result["zones"] = zoneAdapter.get_zones(d_filter)
+    if request.args.get("include_geojson") and request.args.get("include_geojson") == 'true':
+        result["zones"] = zoneAdapter.get_zones(d_filter)
+    else:
+        result["zones"] = zoneAdapter.list_zones(d_filter)
 
     return jsonify(result)
 
