@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-api
+  labels:
+    app: dashboard-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard-api
+  template:
+    metadata:
+      labels:
+        app: dashboard-api
+    spec:
+      containers:
+        - name: dashboard-api
+          image: registry.gitlab.com/bikedashboard/dashboard-api:0.1.11
+          env:
+            - name: ip
+              value: "10.133.75.95"
+            - name: password
+              valueFrom:
+                secretKeyRef:
+                  name: db-password-deelfietsdashboard
+                  key: password
