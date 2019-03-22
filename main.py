@@ -225,7 +225,9 @@ def get_raw_gbfs():
 
 @app.route("/gbfs")
 def get_gbfs():
-    data = get_raw_gbfs()
+    data = {}
+    if request.args.get('feed'):
+        data = get_raw_gbfs(request.args.get('feed'))
 
     conn.commit()
     return jsonify(data)
