@@ -17,10 +17,12 @@ class ParkEvents():
             AND (end_time > %s OR end_time is null)
         AND (false = %s or ST_WITHIN(location, 
 	    (SELECT st_union(area) 
-	    FROM zones WHERE zone_id IN %s)));
+	    FROM zones WHERE zone_id IN %s)))
+        AND (false = %s or system_id IN %s);
         """
         cur.execute(stmt, (d_filter.get_timestamp(), d_filter.get_timestamp(), 
-            d_filter.has_zone_filter(), d_filter.get_zones()))
+            d_filter.has_zone_filter(), d_filter.get_zones(),
+            d_filter.has_operator_filter(), d_filter.get_operators()))
         return self.serialize_park_events(cur.fetchall())
 
     def serialize_park_events(self, park_events):

@@ -4,6 +4,7 @@ import datetime
 class DataFilter():
     def __init__(self):
         self.zones = []
+        self.operators = []
         self.timestamp = None
         self.start_time = None
         self.end_time = None
@@ -56,6 +57,19 @@ class DataFilter():
     def has_gmcode(self):
         return self.gm_code != None
 
+    def add_operators(self, args):
+        if args.get("operators"):
+            self.operators = args.get("operators").split(",")
+
+    def has_operator_filter(self):
+        return len(self.operators) > 0
+
+    def get_operators(self):
+        print(self.operators)
+        if len(self.operators) == 0:
+            return ('undefined',)
+        return tuple(self.operators)
+
     @staticmethod
     def build(args):
         filter = DataFilter()
@@ -64,6 +78,7 @@ class DataFilter():
         filter.add_start_time(args)
         filter.add_end_time(args)
         filter.add_gmcode(args)
+        filter.add_operators(args)
 
         return filter
 

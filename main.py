@@ -214,13 +214,13 @@ def get_park_events():
     result["park_events"] = parkEventsAdapter.get_park_events(d_filter) 
     return jsonify(result)
 
-def get_raw_gbfs():
+def get_raw_gbfs(feed):
     stmt = """SELECT json
         FROM raw_gbfs
         WHERE
         feed = %s
         """
-    cur.execute(stmt, ("mobike",))
+    cur.execute(stmt, (feed,))
     return cur.fetchone()[0]
 
 @app.route("/gbfs")
