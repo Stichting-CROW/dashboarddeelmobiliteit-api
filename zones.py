@@ -17,6 +17,20 @@ class Zones():
         self.conn.commit()
         return self.serialize_zones(cur.fetchall())
 
+    def get_zone(self, zone_id):
+        cur = self.conn.cursor()
+        stmt = """ 
+        SELECT zone_id, name, owner,
+        municipality, zone_type
+        FROM zones
+        WHERE zone_id = %s
+        """
+        cur.execute(stmt, (zone_id,))
+        self.conn.commit()
+
+        if cur.rowcount > 0:
+            return self.serialize_zone(cur.fetchone())
+
 
     def get_zones(self, d_filter):
         cur = self.conn.cursor()

@@ -214,6 +214,14 @@ def get_park_events():
     result["park_events"] = parkEventsAdapter.get_park_events(d_filter) 
     return jsonify(result)
 
+@app.route("/park_events/stats")
+def get_park_events_stats():
+    d_filter = data_filter.DataFilter.build(request.args)
+
+    result = {}
+    result["park_event_stats"] = parkEventsAdapter.get_stats(d_filter) 
+    return jsonify(result)
+
 def get_raw_gbfs(feed):
     stmt = """SELECT json
         FROM raw_gbfs
