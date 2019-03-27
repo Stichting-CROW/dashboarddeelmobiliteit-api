@@ -56,13 +56,13 @@ class Zones():
 
         stmt = """
         INSERT INTO zones
-        (area, name, owner)
+        (area, name, municipality)
         VALUES
-        (ST_SET_SRID(ST_GeomFromGeoJSON(%s), 4326), %s, %s)
+        (ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326), %s, %s)
         RETURNING zone_id
         """
         print(data)
-        cur.execute(stmt, (data.get("geojson"), data.get("name"), None))
+        cur.execute(stmt, (json.dumps(data.get("geojson")), data.get("name"), data.get("municipality")))
 
         data["zone_id"] = cur.fetchone()[0]
         self.conn.commit()
