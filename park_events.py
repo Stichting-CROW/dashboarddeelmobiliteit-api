@@ -41,7 +41,7 @@ class ParkEvents():
             END as bucket,
             SUM(sum_bikes) as number_of_park_events
         FROM
-        (SELECT date_trunc('day', NOW() - start_time) as datef, 
+        (SELECT date_trunc('day', %s - start_time) as datef, 
             count(1) as sum_bikes
         FROM (
             SELECT * 
@@ -58,6 +58,7 @@ class ParkEvents():
         ORDER BY bucket;
         """
         cur.execute(stmt, (d_filter.get_timestamp(), d_filter.get_timestamp(), 
+            d_filter.get_timestamp(), 
             zone_id, d_filter.has_operator_filter(), d_filter.get_operators()))
 
         result = {}
