@@ -1,4 +1,6 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g, abort
+from functools import wraps
+
 from flask.json import JSONEncoder
 from datetime import date
 import datetime
@@ -10,6 +12,25 @@ import trips
 import zones
 import park_events
 import data_filter
+import access_control
+
+
+# Initialisation
+conn_str = "dbname=deelfietsdashboard"
+if "dev" in os.environ:
+    conn_str = "dbname=deelfietsdashboard2"
+
+if "ip" in os.environ:
+    conn_str += " host={} ".format(os.environ['ip'])
+if "password" in os.environ:
+    conn_str += " user=deelfietsdashboard password={}".format(os.environ['password'])
+
+
+conn = psycopg2.connect(conn_str)
+cur = conn.cursor()
+tripAdapter = trips.Trips(conn)
+zoneAdapter = zones.Zones(conn)
+accessControl = access_control.AccessControl(conn)
 
 # Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
@@ -39,6 +60,20 @@ class InvalidUsage(Exception):
         rv['message'] = self.message
         return rv
 
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        g.acl = accessControl.retrieve_acl_user(request)
+        if not g.acl:  
+            abort(401)
+        return f(*args, **kwargs)
+    return decorated
+
+def not_authorized(error_msg):
+    data = {}
+    data["error"] = error_msg
+    return jsonify(data), 403
+
 
 app = Flask(__name__)
 app.json_encoder = CustomJSONEncoder
@@ -49,22 +84,13 @@ def handle_invalid_usage(error):
     response.status_code = error.status_code
     return response
 
+@app.errorhandler(401)
+def unauthorized(error):
+    print(error)
+    response = jsonify({'code': 401, 'message': 'You are not authorized (no token or invalid token is present).'})
+    response.status_code = 401
+    return response
 
-# Initialisation
-conn_str = "dbname=deelfietsdashboard"
-if "dev" in os.environ:
-    conn_str = "dbname=deelfietsdashboard2"
-
-if "ip" in os.environ:
-    conn_str += " host={} ".format(os.environ['ip'])
-if "password" in os.environ:
-    conn_str += " user=deelfietsdashboard password={}".format(os.environ['password'])
-
-
-conn = psycopg2.connect(conn_str)
-cur = conn.cursor()
-tripAdapter = trips.Trips(conn)
-zoneAdapter = zones.Zones(conn)
 
 @app.route("/cycles")
 def bike_locations(): 
@@ -169,8 +195,8 @@ def get_municipality_area(municipality):
     return cur.fetchone()
 
 @app.route("/trips")
+@requires_auth
 def get_trips():
-    print(request.args)
     d_filter = data_filter.DataFilter.build(request.args)
 
     result = {}
@@ -206,15 +232,20 @@ def insert_zone():
 
 parkEventsAdapter = park_events.ParkEvents(conn)
 
-@app.route("/park_events")
+@app.route("/park_events", methods=['GET'])
+@requires_auth
 def get_park_events():
     d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
 
     result = {}
     result["park_events"] = parkEventsAdapter.get_park_events(d_filter) 
     return jsonify(result)
 
 @app.route("/park_events/stats")
+@requires_auth
 def get_park_events_stats():
     d_filter = data_filter.DataFilter.build(request.args)
 
@@ -231,6 +262,7 @@ def get_raw_gbfs(feed):
     cur.execute(stmt, (feed,))
     return cur.fetchone()[0]
 
+# This method should also be accesible without 
 @app.route("/gbfs")
 def get_gbfs():
     data = {}
@@ -240,3 +272,16 @@ def get_gbfs():
     conn.commit()
     return jsonify(data)
 
+@app.route("/admin/user/permission", methods=['GET'])
+@requires_auth
+def get_permission():
+    data = g.acl.serialize()
+    return  jsonify(data)
+
+@app.route("/admin/user/permission", methods=['PUT', 'POST'])
+@requires_auth
+def change_permission():
+    print("test")
+    data = g.acl.serialize()
+    print(data)
+    return jsonify(data)
