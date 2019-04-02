@@ -13,6 +13,7 @@ import zones
 import park_events
 import data_filter
 import access_control
+import admin_user
 
 
 # Initialisation
@@ -31,6 +32,7 @@ cur = conn.cursor()
 tripAdapter = trips.Trips(conn)
 zoneAdapter = zones.Zones(conn)
 accessControl = access_control.AccessControl(conn)
+adminControl = admin_user.AdminControl(conn)
 
 # Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
@@ -73,7 +75,6 @@ def not_authorized(error_msg):
     data = {}
     data["error"] = error_msg
     return jsonify(data), 403
-
 
 app = Flask(__name__)
 app.json_encoder = CustomJSONEncoder
@@ -198,6 +199,9 @@ def get_municipality_area(municipality):
 @requires_auth
 def get_trips():
     d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
 
     result = {}
     result["trips"] = tripAdapter.get_trips(d_filter)
@@ -248,6 +252,9 @@ def get_park_events():
 @requires_auth
 def get_park_events_stats():
     d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
 
     result = {}
     result["park_event_stats"] = parkEventsAdapter.get_stats(d_filter) 
@@ -281,7 +288,13 @@ def get_permission():
 @app.route("/admin/user/permission", methods=['PUT', 'POST'])
 @requires_auth
 def change_permission():
-    print("test")
-    data = g.acl.serialize()
-    print(data)
-    return jsonify(data)
+    if not g.acl.is_admin():
+        return not_authorized("This user is not an administrator.")
+
+    print(request.get_json())
+    err = adminControl.validate(request.get_json())
+    if err:
+        raise InvalidUsage(err, status_code=400)
+    adminControl.update(request.get_json())
+   
+    return jsonify(request.get_json())

@@ -1,0 +1,87 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "filter_municipality",
+    "filter_operator",
+    "is_admin",
+    "municipalities",
+    "operators",
+    "username"
+  ],
+  "properties": {
+    "filter_municipality": {
+      "$id": "#/properties/filter_municipality",
+      "type": "boolean",
+      "title": "The Filter_municipality Schema",
+      "default": false,
+      "examples": [
+        true
+      ]
+    },
+    "filter_operator": {
+      "$id": "#/properties/filter_operator",
+      "type": "boolean",
+      "title": "The Filter_operator Schema",
+      "default": false,
+      "examples": [
+        true
+      ]
+    },
+    "is_admin": {
+      "$id": "#/properties/is_admin",
+      "type": "boolean",
+      "title": "The Is_admin Schema",
+      "default": false,
+      "examples": [
+        true
+      ]
+    },
+    "municipalities": {
+      "$id": "#/properties/municipalities",
+      "type": "array",
+      "title": "The Municipalities Schema",
+      "items": {
+        "$id": "#/properties/municipalities/items",
+        "type": "string",
+        "title": "The Items Schema",
+        "default": "",
+        "examples": [
+          "GM0363",
+          "GM0362"
+        ],
+        "pattern": "^(.*)$"
+      }
+    },
+    "operators": {
+      "$id": "#/properties/operators",
+      "type": "array",
+      "title": "The Operators Schema",
+      "items": {
+        "$id": "#/properties/operators/items",
+        "type": "string",
+        "title": "The Items Schema",
+        "default": "",
+        "examples": [
+          "mobike",
+          "flickbike"
+        ],
+        "pattern": "^(.*)$"
+      }
+    },
+    "username": {
+      "$id": "#/properties/username",
+      "type": "string",
+      "title": "The Username Schema",
+      "default": "",
+      "examples": [
+        "sven.boor@gmail.com"
+      ],
+      "format": "email"
+    }
+  }
+}
+

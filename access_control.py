@@ -115,9 +115,6 @@ class ACL():
             print(item)
             self.zone_filters.add(str(item[0]))
             
-
-
-
     # Retrieve the operators to filter on.
     def retrieve_operators(self, cur):
         if not self.has_operator_filter():
@@ -129,6 +126,33 @@ class ACL():
         results = cur.fetchall()
         for item in results:
             self.operator_filters.add(item[0])
+
+    def update(self, cur):
+        stmt = """
+            INSERT INTO acl (username, filter_municipality, 
+                filter_operator, is_admin)
+            VALUES
+            (%s, %s, %s, %s) 
+            ON CONFLICT (username) 
+            DO
+            UPDATE
+            SET username = EXCLUDED.username,
+            filter_municipality = EXCLUDED.filter_municipality,
+            filter_operator = EXCLUDED.filter_operator,
+            is_admin = EXCLUDED.is_admin
+            """
+        cur.execute(stmt, (self.username, self.has_municipality_filter(),
+            self.has_operator_filter(), self.is_admin()))
+        self.update_municipality(cur)
+        self.update_operator(cur)
+
+
+    def update_municipality(self, cur):
+        pass
+
+    def update_operator(self, cur):
+        pass
+
 
     def serialize(self):
         data = {}
