@@ -119,7 +119,7 @@ class ACL():
     def retrieve_operators(self, cur):
         if not self.has_operator_filter():
             return
-        stmt = """ SELECT operator
+        stmt = """SELECT operator
             FROM acl_operator
             WHERE username = %s"""
         cur.execute(stmt, (self.username,))
@@ -148,10 +148,28 @@ class ACL():
 
 
     def update_municipality(self, cur):
-        pass
+        stmt = """DELETE FROM acl_municipalities 
+            WHERE username = %s"""
+        cur.execute(stmt, (self.username,))
+        
+        stmt2 = """INSERT INTO acl_municipalities
+            (username, municipality)
+            VALUES (%s, %s)"""
+
+        for municipality in self.munipality_filters:
+            cur.execute(stmt2, (self.username, municipality))
 
     def update_operator(self, cur):
-        pass
+        stmt = """DELETE FROM acl_operator
+            WHERE username = %s"""
+        cur.execute(stmt, (self.username,))
+
+        stmt2 = """INSERT INTO acl_operator
+            (username, operator)
+            VALUES (%s, %s)"""
+
+        for operator in self.operator_filters:
+            cur.execute(stmt2, (self.username, operator))
 
 
     def serialize(self):

@@ -282,8 +282,15 @@ def get_gbfs():
 @app.route("/admin/user/permission", methods=['GET'])
 @requires_auth
 def get_permission():
-    data = g.acl.serialize()
-    return  jsonify(data)
+    if request.args.get("username") and not g.acl.is_admin:
+        return not_authorized("This user is not an administrator.")
+    if request.args.get("username"):
+        data = accessControl.query_acl(request.args.get("username"))
+    else: 
+        # Default show login of user belonging to token.
+        data = g.acl
+    
+    return jsonify(data.serialize())
 
 @app.route("/admin/user/permission", methods=['PUT', 'POST'])
 @requires_auth

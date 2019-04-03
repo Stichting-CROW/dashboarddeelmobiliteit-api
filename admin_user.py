@@ -23,8 +23,8 @@ class AdminControl():
             input["filter_operator"],
             input["is_admin"]
         )
-        acl.operator_filters = set(input["municipalities"])
-        acl.munipality_filters = set(input["operators"])
+        acl.operator_filters = set(input["operators"]) 
+        acl.munipality_filters = set(input["municipalities"])
         
         cur = self.conn.cursor()
         acl.update(cur)
