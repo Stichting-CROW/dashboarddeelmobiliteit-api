@@ -171,7 +171,6 @@ class ACL():
         for operator in self.operator_filters:
             cur.execute(stmt2, (self.username, operator))
 
-
     def serialize(self):
         data = {}
         data["username"] = self.username
@@ -181,3 +180,47 @@ class ACL():
         data["municipalities"] = self.munipality_filters
         data["operators"] = self.operator_filters
         return data 
+
+    def human_readable_serialize(self):
+        data = self.serialize()
+        
+        municipalities = []
+        if self.has_municipality_filter():
+            for municipality in self.munipality_filters:
+                municipalities.append({"gm_code": municipality, "name": "Amsterdam (voorbeeld)"})
+        else: 
+            municipalities = self.default_municipalities()
+        data["municipalities"] = municipalities
+
+        operators = []
+        if self.has_operator_filter():
+            for operator in self.operator_filters:
+                operators.append({"system_id": operator, "name": operator.capitalize()})
+        else:
+            operators = self.default_operators()
+        data["operators"] = operators
+        return data
+
+    # Temporary static list of municipalities, that should be shown when filtering on municipalities is not enforced.
+    def default_municipalities(self):
+        data = []
+        data.append({"gm_code": "GM0362", "name": "Amstelveen"})
+        data.append({"gm_code": "GM0394", "name": "Haarlemermeer"})
+        data.append({"gm_code": "GM0599", "name": "Rotterdam"})
+        data.append({"gm_code": "GM0518", "name": "Den Haag"})
+        data.append({"gm_code": "GM0344", "name": "Amstelveen"})
+        data.append({"gm_code": "GM0479", "name": "Zaanstad"})
+        data.append({"gm_code": "GM0363", "name": "Amsterdam"})
+        data.append({"gm_code": "GM0503", "name": "Delft"})
+        return data
+
+    # Temporary static list of operators, should be shown when filtering on operator is not enforced.
+    def default_operators(self):
+        operators = []
+        operators.append({"system_id": "flickbike", "name": "Flickbike"})
+        operators.append({"system_id": "donkey", "name": "Donkey Republic"})
+        operators.append({"system_id": "mobike", "name": "Mobike"})
+        return operators
+
+
+        

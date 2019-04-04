@@ -305,3 +305,10 @@ def change_permission():
     adminControl.update(request.get_json())
    
     return jsonify(request.get_json())
+
+# This endpoint returns the same as get_permission but add some human readable fields.
+@app.route("/menu/acl", methods=['GET'])
+@requires_auth
+def show_human_readable_permission():
+    data = g.acl
+    return jsonify(data.human_readable_serialize())
