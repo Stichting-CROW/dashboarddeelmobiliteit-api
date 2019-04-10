@@ -210,7 +210,7 @@ class ACL():
         data.append({"gm_code": "GM0394", "name": "Haarlemermeer"})
         data.append({"gm_code": "GM0599", "name": "Rotterdam"})
         data.append({"gm_code": "GM0518", "name": "Den Haag"})
-        data.append({"gm_code": "GM0344", "name": "Amstelveen"})
+        data.append({"gm_code": "GM0344", "name": "Utrecht"})
         data.append({"gm_code": "GM0479", "name": "Zaanstad"})
         data.append({"gm_code": "GM0363", "name": "Amsterdam"})
         data.append({"gm_code": "GM0503", "name": "Delft"})
