@@ -125,13 +125,16 @@ def serialize_location(result):
     data["location"]["latitude"] = result[2] 
     data["location"]["longitude"] = result[3]
     data["system_id"] = result[4]
+    data["is_check_in"] = result[5]
+    data["is_check_out"] = result[6]
     return data
 
 
 def get_bicycles_within_bounding_box(sw_lng, sw_lat, ne_lng, ne_lat):
     stmt = """
         SELECT last_time_imported, last_detection_bike.bike_id,
-            ST_Y(location), ST_X(location), last_detection_bike.system_id
+            ST_Y(location), ST_X(location), last_detection_bike.system_id,
+            is_check_in, is_check_out 
 	    FROM last_detection_bike 
         WHERE location && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
     """
@@ -143,7 +146,8 @@ def get_bicycles_within_bounding_box(sw_lng, sw_lat, ne_lng, ne_lat):
 
 def get_bicycles_in_municipality(municipality):
     stmt = """SELECT last_time_imported, q1.bike_id,
-        ST_Y(location), ST_X(location), q1.system_id 
+        ST_Y(location), ST_X(location), q1.system_id, 
+        is_check_in, is_check_out 
         FROM last_detection_bike as q1
         JOIN (SELECT bike_id, sample_id
             FROM last_detection_bike as q1
@@ -161,7 +165,8 @@ def get_bicycles_in_municipality(municipality):
 
 def get_all_bicycles():
     stmt = """SELECT last_time_imported, last_detection_cycle.bike_id,
-            ST_Y(location), ST_X(location), last_detection_cycle.system_id 
+            ST_Y(location), ST_X(location), last_detection_cycle.system_id, 
+            is_check_in, is_check_out
             FROM last_detection_cycle"""
     cur.execute(stmt)
     return cur.fetchall()
