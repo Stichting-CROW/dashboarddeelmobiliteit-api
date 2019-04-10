@@ -143,8 +143,7 @@ def get_bicycles_within_bounding_box(sw_lng, sw_lat, ne_lng, ne_lat):
 
 def get_bicycles_in_municipality(municipality):
     stmt = """SELECT last_time_imported, q1.bike_id,
-        ST_Y(location), ST_X(location), q1.system_id, 
-        end_time, trip_id 
+        ST_Y(location), ST_X(location), q1.system_id 
         FROM last_detection_bike as q1
         JOIN (SELECT bike_id, sample_id
             FROM last_detection_bike as q1
@@ -155,9 +154,7 @@ def get_bicycles_in_municipality(municipality):
                 WHERE gm_code=%s
                 AND geom IS NOT null 
                 LIMIT 1) )) as q2
-        ON q1.bike_id = q2.bike_id AND q1.sample_id = q2.sample_id
-        LEFT JOIN last_trip_bike
-        ON q1.bike_id = last_trip_bike.bike_id"""
+        ON q1.bike_id = q2.bike_id AND q1.sample_id = q2.sample_id"""
     cur.execute(stmt, (municipality,))
 
     return cur.fetchall()
