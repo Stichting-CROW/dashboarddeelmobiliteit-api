@@ -42,7 +42,8 @@ class ACL():
         self.has_operator_filter_enabled = has_operator_filter_enabled
         self.is_administrator = is_administrator
         self.operator_filters = set()
-        self.munipality_filters = set()
+        self.municipality_filters = set()
+        self.hr_municipality_filters = []
         self.zone_filters = set()
 
     # This function returns true when user has right to access.
@@ -97,22 +98,24 @@ class ACL():
     def retrieve_municipalities(self, cur):
         if not self.has_municipality_filter():
             return
-        stmt = """SELECT municipality
+        stmt = """SELECT acl_municipalities.municipality, name
             FROM acl_municipalities
-            WHERE username = %s"""
+            LEFT JOIN zones
+            ON acl_municipalities.municipality = zones.municipality
+            WHERE username = %s and zones.zone_type = 'municipality'"""
         cur.execute(stmt, (self.username,))
         results = cur.fetchall()
         for item in results:
-            self.munipality_filters.add(item[0])
+            self.municipality_filters.add(item[0])
+            self.hr_municipality_filters.append({"gm_code": item[0], "name": item[1]})
         self.retrieve_zones(cur)
 
     def retrieve_zones(self, cur):
         stmt = """SELECT zone_id
             FROM zones
             where municipality in %s"""
-        cur.execute(stmt, (tuple(self.munipality_filters),))
+        cur.execute(stmt, (tuple(self.municipality_filters),))
         for item in cur.fetchall():
-            print(item)
             self.zone_filters.add(str(item[0]))
             
     # Retrieve the operators to filter on.
@@ -156,7 +159,7 @@ class ACL():
             (username, municipality)
             VALUES (%s, %s)"""
 
-        for municipality in self.munipality_filters:
+        for municipality in self.municipality_filters:
             cur.execute(stmt2, (self.username, municipality))
 
     def update_operator(self, cur):
@@ -177,7 +180,7 @@ class ACL():
         data["is_admin"] = self.is_admin()
         data["filter_municipality"] = self.has_municipality_filter_enabled
         data["filter_operator"] = self.has_operator_filter_enabled
-        data["municipalities"] = self.munipality_filters
+        data["municipalities"] = self.municipality_filters
         data["operators"] = self.operator_filters
         return data 
 
@@ -186,8 +189,7 @@ class ACL():
         
         municipalities = []
         if self.has_municipality_filter():
-            for municipality in self.munipality_filters:
-                municipalities.append({"gm_code": municipality, "name": "Amsterdam (voorbeeld)"})
+            municipalities = self.hr_municipality_filters
         else: 
             municipalities = self.default_municipalities()
         data["municipalities"] = municipalities
