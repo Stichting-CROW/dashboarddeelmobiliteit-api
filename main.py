@@ -92,10 +92,12 @@ def unauthorized(error):
     response.status_code = 401
     return response
 
-
 @app.route("/cycles")
-def bike_locations(): 
-  
+@requires_auth
+def bike_locations():
+    if not g.acl.is_admin():
+        return not_authorized("This endpoint can only be used by administrators.")  
+
     if "sw_lng" in request.args and "sw_lat" in request.args and "ne_lng" in request.args and "ne_lat" in request.args:
         result = get_bicycles_within_bounding_box(
             request.args.get("sw_lng"),
@@ -117,25 +119,20 @@ def bike_locations():
 
 def serialize_location(result):
     data = {}
-    data["last_time_position_reported"] = result[0]
+    data["timestamp"] = result[0]
     data["bike_id"] = result[1]
     data["location"] = {}
     data["location"]["latitude"] = result[2] 
     data["location"]["longitude"] = result[3]
     data["system_id"] = result[4]
-    data["timestamp_end_last_trip"] = result[5]
-    data["last_trip_id"] = result[6]
     return data
 
 
 def get_bicycles_within_bounding_box(sw_lng, sw_lat, ne_lng, ne_lat):
     stmt = """
         SELECT last_time_imported, last_detection_bike.bike_id,
-            ST_Y(location), ST_X(location), last_detection_bike.system_id, 
-            end_time, trip_id
+            ST_Y(location), ST_X(location), last_detection_bike.system_id
 	    FROM last_detection_bike 
-        LEFT JOIN last_trip_bike
-        ON last_detection_bike.bike_id = last_trip_bike.bike_id
         WHERE location && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
     """
     try:
@@ -166,12 +163,9 @@ def get_bicycles_in_municipality(municipality):
     return cur.fetchall()
 
 def get_all_bicycles():
-    stmt = """SELECT last_time_imported, last_detection_bike.bike_id,
-            ST_Y(location), ST_X(location), last_detection_bike.system_id, 
-            end_time, trip_id 
-            FROM last_detection_bike
-            LEFT JOIN last_trip_bike
-            ON last_detection_bike.bike_id = last_trip_bike.bike_id"""
+    stmt = """SELECT last_time_imported, last_detection_cycle.bike_id,
+            ST_Y(location), ST_X(location), last_detection_cycle.system_id 
+            FROM last_detection_cycle"""
     cur.execute(stmt)
     return cur.fetchall()
 
