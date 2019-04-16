@@ -23,6 +23,12 @@ class StatsOverTime():
 
     def number_of_bicycles(self, timestamp, d_filter, cur):
         stmt = """
+        WITH temp_a (filter_area) AS
+            (
+            SELECT st_union(area) 
+	            FROM zones WHERE zone_id IN %s
+        )
+
         SELECT 
             CASE 
                 WHEN datef < '1 DAY' THEN 0
@@ -38,20 +44,18 @@ class StatsOverTime():
             count(1) as sum_bikes
         FROM (
             SELECT * 
-            FROM park_events
+            FROM park_events, temp_a
             WHERE start_time < %s 
             AND (end_time > %s or end_time is null)
-            AND (false = %s or ST_WITHIN(location, 
-                (SELECT area
-                FROM zones 
-                WHERE zone_id IN %s)))
+            AND (false = %s or ST_WITHIN(location, temp_a.filter_area))
                 AND (false = %s or system_id IN %s)) AS q1
             GROUP BY datef) q1
         GROUP BY bucket
         ORDER BY bucket;
             """
-        cur.execute(stmt, (timestamp, timestamp, timestamp, 
-            d_filter.has_zone_filter(), d_filter.get_zones(), 
+        cur.execute(stmt, (d_filter.get_zones(), 
+            timestamp, timestamp, timestamp, 
+            d_filter.has_zone_filter(),
             d_filter.has_operator_filter(), d_filter.get_operators()))
         
         result = self.extract_stat(cur.fetchall())

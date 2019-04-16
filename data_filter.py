@@ -65,7 +65,6 @@ class DataFilter():
         return len(self.operators) > 0
 
     def get_operators(self):
-        print(self.operators)
         if len(self.operators) == 0:
             return ('undefined',)
         return tuple(self.operators)
