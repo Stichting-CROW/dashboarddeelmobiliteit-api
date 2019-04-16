@@ -14,12 +14,13 @@ import park_events
 import data_filter
 import access_control
 import admin_user
+import stats_over_time
 
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
 if "dev" in os.environ:
-    conn_str = "dbname=deelfietsdashboard2"
+    conn_str = "dbname=deelfietsdashboard3"
 
 if "ip" in os.environ:
     conn_str += " host={} ".format(os.environ['ip'])
@@ -33,6 +34,7 @@ tripAdapter = trips.Trips(conn)
 zoneAdapter = zones.Zones(conn)
 accessControl = access_control.AccessControl(conn)
 adminControl = admin_user.AdminControl(conn)
+statsOvertime = stats_over_time.StatsOverTime(conn)
 
 # Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
@@ -254,6 +256,23 @@ def get_park_events_stats():
 
     result = {}
     result["park_event_stats"] = parkEventsAdapter.get_stats(d_filter) 
+    return jsonify(result)
+
+@app.route("/stats/available_bikes")
+@requires_auth
+def get_available_bicycles():
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    if not d_filter.get_start_time():
+        raise InvalidUsage("No start_time specified", status_code=400)
+    if not d_filter.get_end_time():
+        raise InvalidUsage("No end_time specified", status_code=400)
+    
+    result = {}
+    result["available_bikes"] = statsOvertime.query_stats(d_filter)
     return jsonify(result)
 
 def get_raw_gbfs(feed):
