@@ -29,8 +29,8 @@ class Trips():
         AND (false = %s or system_id IN %s) 
         """
         cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(), 
-            d_filter.get_end_time(), d_filter.has_zone_filter()),
-            d_filter.has_operator_filter(), d_filter.get_operators())
+            d_filter.get_end_time(), d_filter.has_zone_filter(),
+            d_filter.has_operator_filter(), d_filter.get_operators()))
         return self.serialize_trips(cur.fetchall())
 
     def query_stats(self, zone_id, d_filter):
