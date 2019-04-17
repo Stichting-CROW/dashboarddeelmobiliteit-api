@@ -205,6 +205,23 @@ def get_trips():
     result["trips"] = tripAdapter.get_trips(d_filter)
     return jsonify(result)
 
+@app.route("/trips/stats")
+@requires_auth
+def get_trips_stats():
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    if not d_filter.get_start_time():
+        raise InvalidUsage("No start_time specified", status_code=400)
+    if not d_filter.get_end_time():
+        raise InvalidUsage("No end_time specified", status_code=400)
+
+    result = {}
+    result["trip_stats"] = tripAdapter.get_stats(d_filter)
+    return jsonify(result)
+
 @app.route("/zones")
 def get_zones():
     d_filter = data_filter.DataFilter.build(request.args)
