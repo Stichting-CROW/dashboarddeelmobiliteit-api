@@ -214,11 +214,13 @@ class ACL():
         data.append({"gm_code": "GM0479", "name": "Zaanstad"})
         data.append({"gm_code": "GM0363", "name": "Amsterdam"})
         data.append({"gm_code": "GM0503", "name": "Delft"})
+        data.append({"gm_code": "GM0289", "name": "Wageningen"})
         return data
 
     # Temporary static list of operators, should be shown when filtering on operator is not enforced.
     def default_operators(self):
         operators = []
+        operators.append({"system_id": "cykl", "name": "Cykl"})
         operators.append({"system_id": "flickbike", "name": "Flickbike"})
         operators.append({"system_id": "donkey", "name": "Donkey Republic"})
         operators.append({"system_id": "mobike", "name": "Mobike"})
