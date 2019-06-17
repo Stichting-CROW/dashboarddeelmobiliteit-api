@@ -47,12 +47,8 @@ class Zones():
         
         return self.serialize_zones(cur.fetchall())
 
-    def create_zone(self, zone):
+    def create_zone(self, data):
         cur = self.conn.cursor()
-        try:
-            data = json.loads(zone)
-        except:
-            return None, "Invalid JSON"
 
         if not self.check_if_zone_is_valid(data):
             return None, "Zone is outside municipality borders."

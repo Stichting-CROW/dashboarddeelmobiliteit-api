@@ -20,7 +20,7 @@ import stats_over_time
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
 if "dev" in os.environ:
-    conn_str = "dbname=deelfietsdashboard3"
+    conn_str = "dbname=deelfietsdashboard2"
 
 if "ip" in os.environ:
     conn_str += " host={} ".format(os.environ['ip'])
@@ -243,8 +243,22 @@ def zone():
         return jsonify(result)
 
 @app.route("/zone", methods=['PUT', 'POST'])
+@requires_auth
 def insert_zone():
-    result, err = zoneAdapter.create_zone(request.data)
+    try:
+        zone_data = json.loads(request.data)
+    except:
+        raise InvalidUsage("invalid JSON", status_code=400)
+    
+    if not "municipality" in zone_data:
+        return not_authorized("No field 'municipality' in JSON")
+
+    authorized, error = g.acl.check_municipality_code(zone_data["municipality"])
+    if not authorized:
+        return not_authorized(error)
+
+
+    result, err = zoneAdapter.create_zone(zone_data)
     if err:
         raise InvalidUsage(err, status_code=400)
     return jsonify(result), 201

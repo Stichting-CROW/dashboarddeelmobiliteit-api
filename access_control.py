@@ -46,6 +46,15 @@ class ACL():
         self.hr_municipality_filters = []
         self.zone_filters = set()
 
+    def check_municipality_code(self, municipality_code):
+        if not self.has_municipality_filter():
+            return True, None
+
+        if municipality_code in self.municipality_filters:
+            return True, None
+
+        return False, "User is not allowed to access this municipality."
+
     # This function returns true when user has right to access.
     def check_municipalities(self, d_filter):
         if not self.has_municipality_filter():
