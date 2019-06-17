@@ -54,6 +54,9 @@ class Zones():
         except:
             return None, "Invalid JSON"
 
+        if not self.check_if_zone_is_valid(data):
+            return None, "Zone is outside municipality borders."
+
         stmt = """
         INSERT INTO zones
         (area, name, municipality)
@@ -67,7 +70,22 @@ class Zones():
         data["zone_id"] = cur.fetchone()[0]
         self.conn.commit()
         return data, None
-        
+
+    def check_if_zone_is_valid(self, zone_data):
+        cur = self.conn.cursor()
+        stmt = """  
+        SELECT ST_WITHIN(
+	        ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326), 
+            -- Add some buffer to allow drawing a little bit out of the municipality border
+            (SELECT st_buffer(area, 0.02) 
+            FROM zones
+            WHERE municipality = %s
+            AND zone_type = 'municipality'
+            limit 1)
+        );
+        """
+        cur.execute(stmt, (json.dumps(zone_data.get("geojson")), zone_data.get("municipality")))
+        return cur.fetchone()[0]
 
     def serialize_zones(self, zones):
         result = []
