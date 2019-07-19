@@ -203,6 +203,7 @@ def get_trips():
 
     result = {}
     result["trips"] = tripAdapter.get_trips(d_filter)
+    conn.commit()
     return jsonify(result)
 
 @app.route("/trips/stats")
@@ -220,6 +221,7 @@ def get_trips_stats():
 
     result = {}
     result["trip_stats"] = tripAdapter.get_stats(d_filter)
+    conn.commit()
     return jsonify(result)
 
 @app.route("/zones")
@@ -232,8 +234,9 @@ def get_zones():
     if request.args.get("include_geojson") and request.args.get("include_geojson") == 'true':
         result["zones"] = zoneAdapter.get_zones(d_filter)
     else:
-        result["zones"] = zoneAdapter.list_zones(d_filter)
+        result["zones"] = zoneAdapter.list_zones(d_filter) 
 
+    conn.commit()
     return jsonify(result)
 
 @app.route("/zone/<zone_id>")
@@ -241,6 +244,7 @@ def zone():
     if request.method == 'GET':
         result = zoneAdapter.get_zones(zones)
         return jsonify(result)
+    conn.commit()
 
 @app.route("/zone", methods=['PUT', 'POST'])
 @requires_auth
