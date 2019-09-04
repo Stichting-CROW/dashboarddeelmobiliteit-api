@@ -55,9 +55,9 @@ class Zones():
 
         stmt = """
         INSERT INTO zones
-        (area, name, municipality)
+        (area, name, municipality, zone_type)
         VALUES
-        (ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326), %s, %s)
+        (ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326), %s, %s, 'custom')
         RETURNING zone_id
         """
         print(data)
