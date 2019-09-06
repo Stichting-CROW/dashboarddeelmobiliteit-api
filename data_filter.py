@@ -14,6 +14,9 @@ class DataFilter():
         if args.get("zone_ids"):
             self.zones = args.get("zone_ids").split(",")
 
+    def add_zone(self, zone_id):
+        self.zones.append(zone_id)
+
     def get_zones(self):
         if len(self.zones) == 0:
             return (-1,)

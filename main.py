@@ -239,12 +239,18 @@ def get_zones():
     conn.commit()
     return jsonify(result)
 
-@app.route("/zone/<zone_id>")
-def zone():
-    if request.method == 'GET':
-        result = zoneAdapter.get_zones(zones)
-        return jsonify(result)
+@app.route("/zone/<zone_id>", methods=['DELETE'])
+@requires_auth
+def zone(zone_id):
+    d_filter = data_filter.DataFilter()
+    d_filter.add_zone(zone_id)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    deleted = zoneAdapter.delete_zone(zone_id)
     conn.commit()
+    return jsonify({"deleted": deleted})
 
 @app.route("/zone", methods=['PUT', 'POST'])
 @requires_auth

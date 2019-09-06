@@ -62,10 +62,27 @@ class Zones():
         """
         print(data)
         cur.execute(stmt, (json.dumps(data.get("geojson")), data.get("name"), data.get("municipality")))
-
         data["zone_id"] = cur.fetchone()[0]
         self.conn.commit()
         return data, None
+
+    def delete_zone(self, zone_id):
+        cur = self.conn.cursor()
+
+        stmt = """
+        DELETE 
+        FROM ZONES
+        WHERE zone_id = %s
+        AND zone_type = 'custom'
+        RETURNING *
+        """
+        cur.execute(stmt, (zone_id,))
+        self.conn.commit()
+        succesful = (len(cur.fetchall()) > 0)
+        cur.close()
+
+        return succesful
+
 
     def check_if_zone_is_valid(self, zone_data):
         cur = self.conn.cursor()
