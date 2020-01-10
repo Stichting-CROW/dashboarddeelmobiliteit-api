@@ -236,6 +236,7 @@ class ACL():
         operators.append({"system_id": "mobike", "name": "Mobike"})
         operators.append({"system_id": "htm", "name": "HTM"})
         operators.append({"system_id": "jump", "name": "JUMP (Uber)"})
+        operators.append({"system_id": "jump_static", "name": "JUMP statisch id (Uber)"})
         return operators
 
 
