@@ -33,6 +33,30 @@ class AccessControl():
         acl_user.retrieve_operators(cur)
         return acl_user
 
+    def list_acl(self):
+        stmt = """
+        SELECT username, filter_municipality, filter_operator, is_admin
+        FROM acl;
+        """
+        cur = self.conn.cursor()
+        cur.execute(stmt)
+
+        users = []
+        for user in cur.fetchall():
+            users.append(ACL(user[0], user[1], user[2], user[3]))
+        return users
+
+    def delete_user_acl(self, email):
+        cur = self.conn.cursor()
+        user_acl = self.query_acl(email)
+        if not user_acl:
+            return "User doesn't exists in ACL."
+        user_acl.operator_filters = set()
+        user_acl.update_operator(cur)
+        user_acl.municipality_filters = set()
+        user_acl.update_municipality(cur)
+        user_acl.delete(cur)
+        self.conn.commit()
 
 class ACL():
     def __init__(self, username, has_municipality_filter_enabled, 
@@ -120,6 +144,8 @@ class ACL():
         self.retrieve_zones(cur)
 
     def retrieve_zones(self, cur):
+        if len(self.municipality_filters) == 0:
+            return
         stmt = """SELECT zone_id
             FROM zones
             where municipality in %s"""
@@ -182,6 +208,11 @@ class ACL():
 
         for operator in self.operator_filters:
             cur.execute(stmt2, (self.username, operator))
+
+    def delete(self, cur):
+        stmt = """DELETE FROM acl
+            WHERE username = %s"""
+        cur.execute(stmt, (self.username,))
 
     def serialize(self):
         data = {}

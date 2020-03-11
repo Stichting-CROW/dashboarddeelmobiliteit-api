@@ -15,12 +15,14 @@ import data_filter
 import access_control
 import admin_user
 import stats_over_time
+import rentals
+
 
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
 if "dev" in os.environ:
-    conn_str = "dbname=deelfietsdashboard2"
+    conn_str = "dbname=deelfietsdashboard3"
 
 if "ip" in os.environ:
     conn_str += " host={} ".format(os.environ['ip'])
@@ -32,6 +34,7 @@ conn = psycopg2.connect(conn_str)
 cur = conn.cursor()
 tripAdapter = trips.Trips(conn)
 zoneAdapter = zones.Zones(conn)
+rentalAdapter = rentals.Rentals(conn)
 accessControl = access_control.AccessControl(conn)
 adminControl = admin_user.AdminControl(conn)
 statsOvertime = stats_over_time.StatsOverTime(conn)
@@ -224,6 +227,38 @@ def get_trips_stats():
     conn.commit()
     return jsonify(result)
 
+@app.route("/rentals")
+@requires_auth
+def get_rentals():
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    result = {}
+    result["start_rentals"] = rentalAdapter.get_start_trips(d_filter)
+    result["end_rentals"] = rentalAdapter.get_end_trips(d_filter)
+    conn.commit()
+    return jsonify(result)
+
+@app.route("/rentals/stats")
+@requires_auth
+def get_rentals_stats():
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    if not d_filter.get_start_time():
+        raise InvalidUsage("No start_time specified", status_code=400)
+    if not d_filter.get_end_time():
+        raise InvalidUsage("No end_time specified", status_code=400)
+
+    result = {}
+    result["rental_stats"] = rentalAdapter.get_stats(d_filter)
+    conn.commit()
+    return jsonify(result)
+
 @app.route("/zones")
 def get_zones():
     d_filter = data_filter.DataFilter.build(request.args)
@@ -361,6 +396,45 @@ def change_permission():
     adminControl.update(request.get_json())
    
     return jsonify(request.get_json())
+
+@app.route("/admin/user/create", methods=['PUT'])
+@requires_auth
+def create_user():
+    if not g.acl.is_admin():
+        return not_authorized("This user is not an administrator.")
+
+    res, err = adminControl.create_user(request.get_json())    
+    if not res:
+        raise InvalidUsage(err, status_code=400)
+
+    print(request.get_json())
+    return jsonify(res)
+
+@app.route("/admin/user/list", methods=['GET'])
+@requires_auth
+def list_user():
+    if not g.acl.is_admin():
+        return not_authorized("This user is not an administrator.")
+
+    res = map(lambda acl: acl.serialize(), adminControl.list_users())
+
+    return jsonify(res)
+
+@app.route("/admin/user/delete", methods=['DELETE'])
+@requires_auth
+def delete_user():
+    if not g.acl.is_admin():
+        return not_authorized("This user is not an administrator.")
+
+    username = request.args.get('username')
+    if not username:
+        raise InvalidUsage("Username should be specified as query paramter", username)
+    res = adminControl.delete_user(username)
+    if res:
+        raise InvalidUsage(res, status_code=400)
+
+    return jsonify(res)
+    
 
 # This endpoint returns the same as get_permission but add some human readable fields.
 @app.route("/menu/acl", methods=['GET'])
