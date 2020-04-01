@@ -256,6 +256,8 @@ class ACL():
         data.append({"gm_code": "GM0503", "name": "Delft"})
         data.append({"gm_code": "GM0289", "name": "Wageningen"})
         data.append({"gm_code": "GM0228", "name": "Ede"})
+        data.append({"gm_code": "GM0794", "name": "Helmond"})
+        data.append({"gm_code": "GM0772", "name": "Eindhoven"})
         return data
 
     # Temporary static list of operators, should be shown when filtering on operator is not enforced.
