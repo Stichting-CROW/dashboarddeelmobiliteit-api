@@ -258,6 +258,7 @@ class ACL():
         data.append({"gm_code": "GM0228", "name": "Ede"})
         data.append({"gm_code": "GM0794", "name": "Helmond"})
         data.append({"gm_code": "GM0772", "name": "Eindhoven"})
+        data.append({"gm_code": "GM0193", "name": "Zwolle"})
         return data
 
     # Temporary static list of operators, should be shown when filtering on operator is not enforced.
@@ -272,6 +273,7 @@ class ACL():
         operators.append({"system_id": "gosharing", "name": "GO Sharing"})
         operators.append({"system_id": "check", "name": "CHECK"})
         operators.append({"system_id": "felyx", "name": "Felyx"})
+        operators.append({"system_id": "deelfietsnederland", "name": "Deelfiets Nederland"})
         return operators
 
 
