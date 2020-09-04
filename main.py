@@ -17,8 +17,6 @@ import admin_user
 import stats_over_time
 import rentals
 
-
-
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
 if "dev" in os.environ:

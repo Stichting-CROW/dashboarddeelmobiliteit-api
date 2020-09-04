@@ -49,8 +49,9 @@ class AdminControl():
 
         create_user_data = {}
         create_user_data["user"] = {}
-        create_user_data["user"]["username"] = input["email"]
-        create_user_data["user"]["email"] = input["email"]
+        username = input["email"].lower()
+        create_user_data["user"]["username"] = username
+        create_user_data["user"]["email"] = username
         create_user_data["user"]["password"] = self.random_string_generator(12)
 
         r = requests.post("https://auth.deelfietsdashboard.nl/api/user", headers=headers, data=json.dumps(create_user_data))
