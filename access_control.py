@@ -224,14 +224,14 @@ class ACL():
         data["operators"] = self.operator_filters
         return data 
 
-    def human_readable_serialize(self):
+    def human_readable_serialize(self, cur):
         data = self.serialize()
         
         municipalities = []
         if self.has_municipality_filter():
             municipalities = self.hr_municipality_filters
         else: 
-            municipalities = self.default_municipalities()
+            municipalities = self.default_municipalities(cur)
         data["municipalities"] = municipalities
 
         operators = []
@@ -243,24 +243,18 @@ class ACL():
         data["operators"] = operators
         return data
 
+
     # Temporary static list of municipalities, that should be shown when filtering on municipalities is not enforced.
-    def default_municipalities(self):
+    def default_municipalities(self, cur):
         data = []
-        data.append({"gm_code": "GM0362", "name": "Amstelveen"})
-        data.append({"gm_code": "GM0394", "name": "Haarlemermeer"})
-        data.append({"gm_code": "GM0599", "name": "Rotterdam"})
-        data.append({"gm_code": "GM0518", "name": "Den Haag"})
-        data.append({"gm_code": "GM0344", "name": "Utrecht"})
-        data.append({"gm_code": "GM0479", "name": "Zaanstad"})
-        data.append({"gm_code": "GM0363", "name": "Amsterdam"})
-        data.append({"gm_code": "GM0503", "name": "Delft"})
-        data.append({"gm_code": "GM0289", "name": "Wageningen"})
-        data.append({"gm_code": "GM0228", "name": "Ede"})
-        data.append({"gm_code": "GM0794", "name": "Helmond"})
-        data.append({"gm_code": "GM0772", "name": "Eindhoven"})
-        data.append({"gm_code": "GM0193", "name": "Zwolle"})
-        data.append({"gm_code": "GM0606", "name": "Schiedam"})
-        data.append({"gm_code": "GM0758", "name": "Breda"})
+        stmt = """
+            SELECT name, municipality 
+            FROM municipalities_with_data 
+            ORDER BY name;
+        """
+        cur.execute(stmt)
+        for municipality in cur.fetchall():
+            data.append({"gm_code": municipality[1], "name": municipality[0]})
         return data
 
     # Temporary static list of operators, should be shown when filtering on operator is not enforced.

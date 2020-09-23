@@ -439,4 +439,5 @@ def delete_user():
 @requires_auth
 def show_human_readable_permission():
     data = g.acl
-    return jsonify(data.human_readable_serialize())
+    cur2 = conn.cursor()
+    return jsonify(data.human_readable_serialize(cur2))
