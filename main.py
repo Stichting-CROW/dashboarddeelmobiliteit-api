@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, g, abort
+from flask import Flask, jsonify, request, g, abort, send_file
 from functools import wraps
 
 from flask.json import JSONEncoder
@@ -7,6 +7,7 @@ import datetime
 import psycopg2
 import os
 import json
+import io
 
 import trips
 import zones
@@ -16,6 +17,7 @@ import access_control
 import admin_user
 import stats_over_time
 import rentals
+import report.generate_xlsx
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
@@ -348,6 +350,28 @@ def get_available_bicycles():
     result = {}
     result["available_bikes"] = statsOvertime.query_stats(d_filter)
     return jsonify(result)
+
+@app.route("/stats/generate_report")
+def get_report():
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    if not d_filter.has_gmcode():
+        raise InvalidUsage("No municipality specified", status_code=400)
+    if not d_filter.get_start_time():
+        raise InvalidUsage("No start_time specified", status_code=400)
+    if not d_filter.get_end_time():
+        raise InvalidUsage("No end_time specified", status_code=400)
+    
+    raw_data, file_name = report.generate_xlsx.generate_report(conn, d_filter)
+    print(file_name)
+    return send_file(io.BytesIO(raw_data),
+                     attachment_filename=file_name + ".xlsx",
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     cache_timeout=0,
+                     as_attachment=True)
 
 def get_raw_gbfs(feed):
     stmt = """SELECT json
