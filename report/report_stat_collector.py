@@ -57,7 +57,7 @@ class ReportStatCollector():
             ORDER BY avg;
             """
         cur.execute(stmt, (self.d_filter.get_start_time(),  self.d_filter.get_end_time(), 
-            self.d_filter.get_gmcode(), self.d_filter.has_operator_filter(), self.d_filter.get_operators().append("")))
+            self.d_filter.get_gmcode(), self.d_filter.has_operator_filter(), self.d_filter.get_operators() + ("",)))
         stats = cur.fetchall()
         pre_processed_stats = self.pre_process_stats(stats)
         return self.process_stats(pre_processed_stats)
