@@ -9,7 +9,7 @@ class ReportStatCollector():
     def __init__(self, d_filter):
         self.d_filter = d_filter
         self.number_of_days = None
-        self.result = ReportStatResult(self.d_filter.get_start_date(), self.d_filter.get_end_date())
+        self.result = ReportStatResult(self.d_filter.get_start_time(), self.d_filter.get_end_time())
 
     def generate_report(self, conn):
         cur = conn.cursor()
