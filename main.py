@@ -352,6 +352,7 @@ def get_available_bicycles():
     return jsonify(result)
 
 @app.route("/stats/generate_report")
+@requires_auth
 def get_report():
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
