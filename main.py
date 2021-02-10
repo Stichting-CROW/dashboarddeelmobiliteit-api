@@ -355,19 +355,21 @@ def get_available_bicycles():
 @requires_auth
 def get_report():
     d_filter = data_filter.DataFilter.build(request.args)
-    authorized, error = g.acl.is_authorized(d_filter)
-    if not authorized:
-        return not_authorized(error)
-
     if not d_filter.has_gmcode():
         raise InvalidUsage("No municipality specified", status_code=400)
     if not d_filter.get_start_time():
         raise InvalidUsage("No start_time specified", status_code=400)
     if not d_filter.get_end_time():
         raise InvalidUsage("No end_time specified", status_code=400)
-    
+   
+    authorized, error = g.acl.check_municipality_code(d_filter.get_gmcode())
+    if not authorized:
+        return not_authorized(error)
+    authorized, error = g.acl.check_operators(d_filter)
+    if not authorized:
+        return not_authorized(error)
+ 
     raw_data, file_name = report.generate_xlsx.generate_report(conn, d_filter)
-    print(file_name)
     return send_file(io.BytesIO(raw_data),
                      attachment_filename=file_name + ".xlsx",
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

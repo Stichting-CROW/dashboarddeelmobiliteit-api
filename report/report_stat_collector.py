@@ -115,8 +115,8 @@ class ReportStatCollector():
         AND zone_ref in (select stats_ref from zones where municipality = %s)
         AND (false = %s or system_id IN %s) ;
         """
-        cur.execute(stmt, (self.d_filter.get_start_date(), self.d_filter.get_end_date(), 
-            self.d_filter.get_gmcode(), self.d_filter.has_operator_filter(), self.d_filter.get_operator_filter().append("")))
+        cur.execute(stmt, (self.d_filter.get_start_time(), self.d_filter.get_end_time(), 
+            self.d_filter.get_gmcode(), self.d_filter.has_operator_filter(), self.d_filter.get_operators() + ("",)))
         operators = cur.fetchall()
         operators = [operator[0] for operator in operators]
         return operators

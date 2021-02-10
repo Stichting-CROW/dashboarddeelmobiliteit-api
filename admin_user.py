@@ -75,7 +75,7 @@ class AdminControl():
 
     def create_init_acl(self, input):
         acl = access_control.ACL(
-            input["email"],
+            input["email"].lower(),
             input["user_type"] == "municipality",
             input["user_type"] == "operator",
             input["user_type"] == "administer"
