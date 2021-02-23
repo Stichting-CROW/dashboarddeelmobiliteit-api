@@ -265,13 +265,13 @@ class ACL():
         operators.append({"system_id": "donkey", "name": "Donkey Republic"})
         operators.append({"system_id": "mobike", "name": "Mobike"})
         operators.append({"system_id": "htm", "name": "HTM"})
-        operators.append({"system_id": "jump", "name": "JUMP (Uber)"})
         operators.append({"system_id": "gosharing", "name": "GO Sharing"})
         operators.append({"system_id": "check", "name": "CHECK"})
         operators.append({"system_id": "felyx", "name": "Felyx"})
         operators.append({"system_id": "deelfietsnederland", "name": "Deelfiets Nederland"})
-        operators.append({"system_id": "donkey2", "name": "Donkey2"})
         operators.append({"system_id": "keobike", "name": "Keobike"})
+        operators.append({"system_id": "lime", "name": "Lime"})
+        operators.append({"system_id": "baqme", "name": "BAQME"})
         return operators
 
 
