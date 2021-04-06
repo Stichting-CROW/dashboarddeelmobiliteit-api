@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, g, abort, send_file
+from flask import Flask, jsonify, request, g, abort, send_file, after_this_request, send_from_directory
 from functools import wraps
 
 from flask.json import JSONEncoder
@@ -8,6 +8,7 @@ import psycopg2
 import os
 import json
 import io
+import shutil
 
 import trips
 import zones
@@ -18,6 +19,7 @@ import admin_user
 import stats_over_time
 import rentals
 import report.generate_xlsx
+import export_raw_data.export_to_zip
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
@@ -375,6 +377,31 @@ def get_report():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      cache_timeout=0,
                      as_attachment=True)
+
+@app.route("/raw_data")
+@requires_auth
+def get_raw_data():
+    if not g.acl.is_admin():
+        return not_authorized("This user is not an administrator.")
+    d_filter = data_filter.DataFilter.build(request.args)a
+    if not d_filter.get_start_time():
+        raise InvalidUsage("No start_time specified", status_code=400)
+    if not d_filter.get_end_time():
+        raise InvalidUsage("No end_time specified", status_code=400)
+   
+    export_dir = export_raw_data.export_to_zip.generate_zip(conn, d_filter)
+    @after_this_request
+    def remove_file(response):
+        try:
+            shutil.rmtree(export_dir)
+        except OSError as e:
+            print("Error: %s : %s" % (export_dir, e.strerror))
+        return response
+    return send_from_directory(export_dir,
+        filename="export.zip",
+        attachment_filename="export_deelfietsdashboard.zip",
+        as_attachment=True)
+
 
 def get_raw_gbfs(feed):
     stmt = """SELECT json
