@@ -20,6 +20,7 @@ import stats_over_time
 import rentals
 import report.generate_xlsx
 import export_raw_data.export_to_zip
+import audit_log
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
@@ -381,14 +382,23 @@ def get_report():
 @app.route("/raw_data")
 @requires_auth
 def get_raw_data():
-    if not g.acl.is_admin():
-        return not_authorized("This user is not an administrator.")
-    d_filter = data_filter.DataFilter.build(request.args)a
+    d_filter = data_filter.DataFilter.build(request.args)
     if not d_filter.get_start_time():
         raise InvalidUsage("No start_time specified", status_code=400)
     if not d_filter.get_end_time():
         raise InvalidUsage("No end_time specified", status_code=400)
-   
+    
+    # load filters
+    result = d_filter.add_filters_based_on_acl(g.acl)
+    if result != None:
+        return not_authorized(result) 
+
+    # check if all authorizations are matched.
+    authorized, error = g.acl.is_authorized_for_raw_data(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    audit_log.log_request(conn, g.acl.username, request.full_path, d_filter)
     export_dir = export_raw_data.export_to_zip.generate_zip(conn, d_filter)
     @after_this_request
     def remove_file(response):

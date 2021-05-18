@@ -1,4 +1,5 @@
 import datetime
+import json
 
 # This class is a factory for generic filters.
 class DataFilter():
@@ -28,7 +29,7 @@ class DataFilter():
     def add_timestamp(self, args):
         if args.get("timestamp"):
             self.timestamp = datetime.datetime.strptime(
-                    args.get("timestamp"), "%Y-%m-%dT%H:%M:%SZ")
+                args.get("timestamp"), "%Y-%m-%dT%H:%M:%SZ")
 
     def get_timestamp(self):
         return self.timestamp
@@ -64,6 +65,9 @@ class DataFilter():
         if args.get("operators"):
             self.operators = args.get("operators").split(",")
 
+    def add_operator(self, operator_id):
+        self.operators.append(operator_id)
+
     def has_operator_filter(self):
         return len(self.operators) > 0
 
@@ -71,6 +75,22 @@ class DataFilter():
         if len(self.operators) == 0:
             return ('undefined',)
         return tuple(self.operators)
+
+    def add_filters_based_on_acl(self, acl):
+        if acl.has_operator_filter():
+            if len(acl.operator_filters) == 0:
+                return "No operator_filters specified for this account while filtering on operator_filters is enabled."
+            for operator_id in acl.operator_filters:
+                self.add_operator(operator_id)
+        if acl.has_municipality_filter():
+            if len(acl.zone_filters) == 0:
+                return "No municipalities specified on ACL for account while filtering on municipality is enabled."
+            for zone_id in acl.zone_filters:
+                self.add_zone(zone_id)
+
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__, 
+            sort_keys=True, indent=4)
 
     @staticmethod
     def build(args):

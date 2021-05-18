@@ -26,7 +26,8 @@ class AdminControl():
             input["username"],
             input["filter_municipality"],
             input["filter_operator"],
-            input["is_admin"]
+            input["is_admin"],
+            input["is_contact_person_municipality"]
         )
         print(input)
         print(input["municipalities"])
@@ -78,7 +79,8 @@ class AdminControl():
             input["email"].lower(),
             input["user_type"] == "municipality",
             input["user_type"] == "operator",
-            input["user_type"] == "administer"
+            input["user_type"] == "administer",
+            False
         )
         cur = self.conn.cursor()
         acl.update(cur)

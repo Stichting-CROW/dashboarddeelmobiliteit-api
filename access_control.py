@@ -18,7 +18,7 @@ class AccessControl():
 
     def query_acl(self, email):
         stmt = """
-        SELECT username, filter_municipality, filter_operator, is_admin
+        SELECT username, filter_municipality, filter_operator, is_admin, is_contact_person_municipality
         FROM acl
         WHERE username=%s;
         """
@@ -28,14 +28,14 @@ class AccessControl():
             return None
         
         user = cur.fetchone()
-        acl_user = ACL(user[0], user[1], user[2], user[3])
+        acl_user = ACL(user[0], user[1], user[2], user[3], user[4])
         acl_user.retrieve_municipalities(cur)
         acl_user.retrieve_operators(cur)
         return acl_user
 
     def list_acl(self):
         stmt = """
-        SELECT username, filter_municipality, filter_operator, is_admin
+        SELECT username, filter_municipality, filter_operator, is_admin, is_contact_person_municipality
         FROM acl;
         """
         cur = self.conn.cursor()
@@ -43,7 +43,7 @@ class AccessControl():
 
         users = []
         for user in cur.fetchall():
-            users.append(ACL(user[0], user[1], user[2], user[3]))
+            users.append(ACL(user[0], user[1], user[2], user[3], user[4]))
         return users
 
     def delete_user_acl(self, email):
@@ -60,11 +60,12 @@ class AccessControl():
 
 class ACL():
     def __init__(self, username, has_municipality_filter_enabled, 
-            has_operator_filter_enabled, is_administrator):
+            has_operator_filter_enabled, is_administrator, is_contact_person_municipality):
         self.username = username
         self.has_municipality_filter_enabled = has_municipality_filter_enabled
         self.has_operator_filter_enabled = has_operator_filter_enabled
         self.is_administrator = is_administrator
+        self.is_contact_person_municipality = is_contact_person_municipality
         self.operator_filters = set()
         self.municipality_filters = set()
         self.hr_municipality_filters = []
@@ -118,6 +119,11 @@ class ACL():
 
         return True, None
 
+    def is_authorized_for_raw_data(self, d_filter):
+        if self.has_municipality_filter() and not self.is_contact_person_municipality:
+            return False, "User is part of a municipality but doesn't have the contact person permission."
+        return self.is_authorized(d_filter)
+
     def has_operator_filter(self):
         return self.has_operator_filter_enabled
 
@@ -168,19 +174,20 @@ class ACL():
     def update(self, cur):
         stmt = """
             INSERT INTO acl (username, filter_municipality, 
-                filter_operator, is_admin)
+                filter_operator, is_admin, is_contact_person_municipality)
             VALUES
-            (%s, %s, %s, %s) 
+            (%s, %s, %s, %s, %s) 
             ON CONFLICT (username) 
             DO
             UPDATE
             SET username = EXCLUDED.username,
             filter_municipality = EXCLUDED.filter_municipality,
             filter_operator = EXCLUDED.filter_operator,
-            is_admin = EXCLUDED.is_admin
+            is_admin = EXCLUDED.is_admin,
+            is_contact_person_municipality = EXCLUDED.is_contact_person_municipality
             """
         cur.execute(stmt, (self.username, self.has_municipality_filter(),
-            self.has_operator_filter(), self.is_admin()))
+            self.has_operator_filter(), self.is_admin(), self.is_contact_person_municipality))
         self.update_municipality(cur)
         self.update_operator(cur)
 
@@ -220,6 +227,7 @@ class ACL():
         data["is_admin"] = self.is_admin()
         data["filter_municipality"] = self.has_municipality_filter_enabled
         data["filter_operator"] = self.has_operator_filter_enabled
+        data["is_contact_person_municipality"] = self.is_contact_person_municipality
         data["municipalities"] = self.municipality_filters
         data["operators"] = self.operator_filters
         return data 
@@ -272,6 +280,8 @@ class ACL():
         operators.append({"system_id": "keobike", "name": "Keobike"})
         operators.append({"system_id": "lime", "name": "Lime"})
         operators.append({"system_id": "baqme", "name": "BAQME"})
+        operators.append({"system_id": "cargoroo", "name": "Cargoroo"})
+        operators.append({"system_id": "uwdeelfiets", "name": "uwdeelfiets"})
         return operators
 
 
