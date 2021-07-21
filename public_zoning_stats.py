@@ -9,14 +9,11 @@ class PublicZoningStats():
         for zone in zones:
             zone.update( {"operators": []} )
         
+        zone_to_index = {k["zone_id"]: v for v, k in enumerate(zones)}
         zone_ids = [zone['zone_id'] for zone in zones]
         counts = self.query_stats(zone_ids)
         for count in counts:
-            idx = next((i for i,d in enumerate(zones) if d and d["zone_id"] == count[0]), -1)
-            if idx == -1:
-                print("Error in get_stats PublicZoningStats, dit zou niet voor moeten kunnen komen.")
-                print(count)
-                continue
+            idx = zone_to_index[count[0]]
             zone = zones[idx]["operators"].append(
                 {
                     "system_id": count[1],
@@ -25,11 +22,7 @@ class PublicZoningStats():
             )
         zone_geometries = self.query_zones(zone_ids)
         for zone_geometry in zone_geometries:
-            idx = next((i for i,d in enumerate(zones) if d and d["zone_id"] == zone_geometry[0]), -1)
-            if idx == -1:
-                print("Error in get_stats PublicZoningStats, dit zou niet voor moeten kunnen komen.")
-                print(count)
-                continue
+            idx = zone_to_index[zone_geometry[0]]
             zone = zones[idx]["geojson"] = json.loads(zone_geometry[1])
         return zones
 
