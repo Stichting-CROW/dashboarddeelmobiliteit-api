@@ -1,3 +1,4 @@
+import json
 
 class PublicZoningStats():
     def __init__(self, conn):
@@ -22,6 +23,14 @@ class PublicZoningStats():
                     "number_of_vehicles": count[2]
                 }
             )
+        zone_geometries = self.query_zones(zone_ids)
+        for zone_geometry in zone_geometries:
+            idx = next((i for i,d in enumerate(zones) if d and d["zone_id"] == zone_geometry[0]), -1)
+            if idx == -1:
+                print("Error in get_stats PublicZoningStats, dit zou niet voor moeten kunnen komen.")
+                print(count)
+                continue
+            zone = zones[idx]["geojson"] = json.loads(zone_geometry[1])
         return zones
 
     def query_stats(self, zone_ids):
@@ -35,6 +44,16 @@ class PublicZoningStats():
             is null
             AND zone_id in %s
             GROUP by zone_id, system_id;
+        """
+        cur.execute(stmt, (tuple(zone_ids),))
+        return cur.fetchall()
+
+    def query_zones(self, zone_ids):
+        cur = self.conn.cursor()
+        stmt = """
+            SELECT zone_id, ST_AsGeoJSON(area) as geometry
+            FROM zones
+            WHERE zone_id in %s;
         """
         cur.execute(stmt, (tuple(zone_ids),))
         return cur.fetchall()
