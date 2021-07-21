@@ -20,12 +20,13 @@ import stats_over_time
 import rentals
 import report.generate_xlsx
 import export_raw_data.export_to_zip
+import public_zoning_stats
 import audit_log
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
 if "dev" in os.environ:
-    conn_str = "dbname=deelfietsdashboard3"
+    conn_str = "dbname=deelfietsdashboard4"
 
 if "ip" in os.environ:
     conn_str += " host={} ".format(os.environ['ip'])
@@ -310,6 +311,13 @@ def insert_zone():
     if err:
         raise InvalidUsage(err, status_code=400)
     return jsonify(result), 201
+
+publicZonesAdapter = public_zoning_stats.PublicZoningStats(conn)
+# MVP endpoint to retrieve public information of zones.
+@app.route("/public/zones", methods=['GET'])
+def get_occupancy_zones():
+    result = publicZonesAdapter.get_stats()
+    return jsonify(result)
 
 parkEventsAdapter = park_events.ParkEvents(conn)
 
