@@ -73,7 +73,7 @@ class PublicZoningStats():
             },
             {
                 "name": "Korte Zeekant",
-                "zone_id": 51207,
+                "zone_id": 51225,
                 "capacity": 110   
             },
             {
