@@ -282,6 +282,7 @@ class ACL():
         operators.append({"system_id": "baqme", "name": "BAQME"})
         operators.append({"system_id": "cargoroo", "name": "Cargoroo"})
         operators.append({"system_id": "uwdeelfiets", "name": "uwdeelfiets"})
+        operators.append({"system_id": "hely", "name": "Hely"})
         return operators
 
 
