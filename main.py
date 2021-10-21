@@ -21,6 +21,7 @@ import rentals
 import report.generate_xlsx
 import export_raw_data.export_to_zip
 import public_zoning_stats
+import public_vehicles
 import audit_log
 
 # Initialisation
@@ -317,6 +318,13 @@ publicZonesAdapter = public_zoning_stats.PublicZoningStats(conn)
 @app.route("/public/zones", methods=['GET'])
 def get_occupancy_zones():
     result = publicZonesAdapter.get_stats()
+    return jsonify(result)
+
+publicVehiclesAdapter = public_vehicles.PublicAvailableVehicles(conn)
+# MVP endpoint to retrieve public information of zones.
+@app.route("/public/vehicles_in_public_space", methods=['GET'])
+def get_vehicles_in_public_space():
+    result = publicVehiclesAdapter.get_vehicles()
     return jsonify(result)
 
 parkEventsAdapter = park_events.ParkEvents(conn)
