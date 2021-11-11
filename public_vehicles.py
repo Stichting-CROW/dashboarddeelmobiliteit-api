@@ -15,7 +15,16 @@ class PublicAvailableVehicles():
             ST_Y(location), ST_X(location), 
 	        start_time
             FROM park_events
-            WHERE end_time is null;
+            WHERE end_time is null
+            AND (
+                location
+                @
+                ST_MakeEnvelope (
+                xmin, ymin, -- bounding 
+                xmax, ymax, -- box limits
+                4326)
+            )
+
         """
         cur.execute(stmt)
         return self.serialize_vehicles(cur.fetchall())
