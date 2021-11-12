@@ -42,10 +42,17 @@ def generate_trips(conn, d_filter, dir_name):
         FROM trips, temp_a
         WHERE start_time >= {start_time}
         AND start_time < {end_time}
-        AND (false = {filter_on_zones} or 
-            (ST_Within(start_location, temp_a.filter_area) OR
-             ST_Within(end_location, temp_a.filter_area) ))
-        AND (false = {filter_on_system_id} or system_id IN {system_ids}))
+        AND (
+                false = {filter_on_zones} or (
+                    ST_Within(start_location, temp_a.filter_area) OR
+                    ST_Within(end_location, temp_a.filter_area)
+                )
+            )
+            AND (
+                false = {filter_on_system_id} or 
+                system_id IN {system_ids}
+            )
+        )
         TO STDOUT With CSV HEADER DELIMITER ','
     """).format(
         start_time=psycopg2.sql.Literal(d_filter.start_time),
@@ -71,9 +78,13 @@ def generate_park_events(conn, d_filter, dir_name):
     check_out_sample_id, check_in_sample_id  
     FROM park_events 
     WHERE (start_time >= {start_time} and start_time < {end_time})
-    AND (false = {filter_on_zones} or ST_WITHIN(location, 
-	    (SELECT st_union(area) 
-	    FROM zones WHERE zone_id IN {zone_ids})))
+    AND (
+            false = {filter_on_zones} 
+            or ST_WITHIN(location, (
+                SELECT st_union(area) 
+	            FROM zones WHERE zone_id IN {zone_ids}
+            ))
+        )
         AND (false = {filter_on_system_id} or system_id IN {system_ids})
     ) To STDOUT With CSV HEADER DELIMITER ','
     """).format(
