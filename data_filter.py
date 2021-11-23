@@ -10,6 +10,7 @@ class DataFilter():
         self.start_time = None
         self.end_time = None
         self.gm_code = None
+        self.form_factors = []
 
     def add_zones(self, args):
         if args.get("zone_ids"):
@@ -76,6 +77,21 @@ class DataFilter():
             return ('undefined',)
         return tuple(self.operators)
 
+    def add_form_factor(self, args):
+        if args.get("form_factors"):
+            self.form_factors = args.get("form_factors").split(",")
+
+    def has_form_factor_filter(self):
+        return len(self.form_factors) > 0
+
+    def get_form_factors(self):
+        if len(self.form_factors) == 0:
+            return ('undefined',)
+        return tuple(self.form_factors)
+
+    def include_unknown_form_factors(self):
+        return "unknown" in self.form_factors
+
     def add_filters_based_on_acl(self, acl):
         if acl.has_operator_filter():
             if len(acl.operator_filters) == 0:
@@ -101,6 +117,7 @@ class DataFilter():
         filter.add_end_time(args)
         filter.add_gmcode(args)
         filter.add_operators(args)
+        filter.add_form_factor(args)
 
         return filter
 

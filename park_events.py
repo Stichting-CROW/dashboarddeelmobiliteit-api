@@ -12,20 +12,27 @@ class ParkEvents():
     def get_park_events(self, d_filter):
         cur = self.conn.cursor()
         stmt = """ 
-        SELECT system_id, bike_id, 
+        SELECT park_events.system_id, bike_id, 
 	        ST_Y(location), ST_X(location), 
-	        start_time, end_time
+	        start_time, end_time, form_factor
         FROM park_events
+        LEFT JOIN vehicle_type 
+        ON park_events.vehicle_type_id = vehicle_type.vehicle_type_id
         WHERE start_time < %s 
             AND (end_time > %s OR end_time is null)
         AND (false = %s or ST_WITHIN(location, 
 	    (SELECT st_union(area) 
 	    FROM zones WHERE zone_id IN %s)))
-        AND (false = %s or system_id IN %s);
+        AND (false = %s or park_events.system_id IN %s)
+        AND (false = %s or 
+                (form_factor in %s or (true = %s and form_factor is null))
+            ) ;
         """
         cur.execute(stmt, (d_filter.get_timestamp(), d_filter.get_timestamp(), 
             d_filter.has_zone_filter(), d_filter.get_zones(),
-            d_filter.has_operator_filter(), d_filter.get_operators()))
+            d_filter.has_operator_filter(), d_filter.get_operators(),
+            d_filter.has_form_factor_filter(), d_filter.get_form_factors(),
+            d_filter.include_unknown_form_factors()))
         return self.serialize_park_events(cur.fetchall())
 
     def get_stats_per_zone(self, d_filter, zone_id):
