@@ -109,6 +109,7 @@ class ParkEvents():
         data["location"]["longitude"] = park_event[3]
         data["start_time"] = park_event[4]
         data["end_time"] = park_event[5]
+        data["form_factor"] = park_event[6]
         return data
 
 
