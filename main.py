@@ -23,6 +23,8 @@ import export_raw_data.export_to_zip
 import public_zoning_stats
 import public_vehicles
 import audit_log
+import stats_aggregated_availability
+import stats_aggregated_rentals
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
@@ -43,6 +45,8 @@ rentalAdapter = rentals.Rentals(conn)
 accessControl = access_control.AccessControl(conn)
 adminControl = admin_user.AdminControl(conn)
 statsOvertime = stats_over_time.StatsOverTime(conn)
+statsAggregatedAvailability = stats_aggregated_availability.AggregatedStatsAvailability(conn)
+statsAggregatedRentals = stats_aggregated_rentals.AggregatedStatsRentals(conn)
 
 # Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
@@ -521,3 +525,51 @@ def show_human_readable_permission():
     data = g.acl
     cur2 = conn.cursor()
     return jsonify(data.human_readable_serialize(cur2))
+
+
+@app.route("/aggregated_stats/available_vehicles")
+@requires_auth
+def get_aggregated_available_vehicles_stats():
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    if not request.args.get("aggregation_level"):
+        raise InvalidUsage("No aggregation_level specified", status_code=400)
+    aggregation_level = request.args.get("aggregation_level")
+    if aggregation_level not in ("day", "week", "month"):
+        raise InvalidUsage("Invalid aggregation level, value should be 'day', 'week' or 'month'", status_code=400)
+
+    if not d_filter.get_start_time():
+        raise InvalidUsage("No start_time specified", status_code=400)
+    if not d_filter.get_end_time():
+        raise InvalidUsage("No end_time specified", status_code=400)
+
+    result = {}
+    result["available_vehicles_aggregated_stats"] = statsAggregatedAvailability.get_stats(d_filter, aggregation_level)
+    return jsonify(result)
+
+@app.route("/aggregated_stats/rentals")
+@requires_auth
+def get_aggregated_rental_stats():
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    if not request.args.get("aggregation_level"):
+        raise InvalidUsage("No aggregation_level specified", status_code=400)
+    aggregation_level = request.args.get("aggregation_level")
+    if aggregation_level not in ("day", "week", "month"):
+        raise InvalidUsage("Invalid aggregation level, value should be 'day', 'week' or 'month'", status_code=400)
+
+    if not d_filter.get_start_time():
+        raise InvalidUsage("No start_time specified", status_code=400)
+    if not d_filter.get_end_time():
+        raise InvalidUsage("No end_time specified", status_code=400)
+
+    result = {}
+    result["rentals_aggregated_stats"] = statsAggregatedRentals.get_stats(d_filter, aggregation_level)
+    conn.commit()
+    return jsonify(result)
