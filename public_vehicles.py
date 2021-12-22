@@ -12,19 +12,9 @@ class PublicAvailableVehicles():
         cur = self.conn.cursor()
         stmt = """
             SELECT system_id, 
-            ST_Y(location), ST_X(location), 
-	        start_time
+            ST_Y(location), ST_X(location) 
             FROM park_events
             WHERE end_time is null
-            AND (
-                location
-                @
-                ST_MakeEnvelope (
-                xmin, ymin, -- bounding 
-                xmax, ymax, -- box limits
-                4326)
-            )
-
         """
         cur.execute(stmt)
         return self.serialize_vehicles(cur.fetchall())
@@ -41,5 +31,4 @@ class PublicAvailableVehicles():
         data["location"] = {}
         data["location"]["latitude"] = round(park_event[1], 6)
         data["location"]["longitude"] = round(park_event[2], 6)
-        data["in_public_space_since"] = park_event[3]
         return data
