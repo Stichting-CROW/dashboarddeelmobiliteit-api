@@ -21,7 +21,7 @@ class AggregatedStatsRentals():
             date >= %(start_date)s AND date <= %(end_date)s
             AND (false = %(filter_zone_id)s or zone_id IN %(zone_ids)s)
             AND (false = %(filter_system_id)s or system_id IN %(system_ids)s)
-            AND stat_description = 'number_of_vehicles_available'
+            AND stat_description = 'number_of_trip_started'
             GROUP BY DATE_TRUNC(%(aggregation)s, stat_dates), system_id
             ORDER BY time_period
             ), 
