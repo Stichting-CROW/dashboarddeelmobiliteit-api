@@ -18,7 +18,12 @@ class Trips():
         )
 
         SELECT trips.system_id, bike_id, st_y(start_location), st_x(start_location), 
-        st_y(end_location), st_x(end_location), start_time, end_time, trip_id, form_factor
+        st_y(end_location), st_x(end_location), start_time, end_time, trip_id, form_factor,
+            ST_Distance(
+			    ST_Transform(start_location::geometry, 3857),
+			    ST_Transform(end_location::geometry, 3857)
+		    ) * cosd(ST_Y(start_location)
+        ) as distance_in_meters
         FROM trips CROSS JOIN temp_a
         LEFT JOIN vehicle_type
         ON trips.vehicle_type_id = vehicle_type.vehicle_type_id
@@ -101,6 +106,7 @@ class Trips():
         data["end_time"] = trip[7]
         data["trip_id"] = trip[8]
         data["form_factor"] = trip[9]
+        data["distance_in_meters"] = trip[10]
         return data
        
 
