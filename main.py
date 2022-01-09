@@ -11,6 +11,7 @@ import io
 import shutil
 
 import trips
+import trips_v2
 import zones
 import park_events
 import data_filter
@@ -40,6 +41,7 @@ if "password" in os.environ:
 conn = psycopg2.connect(conn_str)
 cur = conn.cursor()
 tripAdapter = trips.Trips(conn)
+tripAdapterV2 = trips_v2.Trips(conn)
 zoneAdapter = zones.Zones(conn)
 rentalAdapter = rentals.Rentals(conn)
 accessControl = access_control.AccessControl(conn)
@@ -233,6 +235,34 @@ def get_trips_stats():
 
     result = {}
     result["trip_stats"] = tripAdapter.get_stats(d_filter)
+    conn.commit()
+    return jsonify(result)
+
+
+@app.route("/v2/trips/origins")
+@requires_auth
+def get_trips_origins():
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    result = {}
+    result["trip_origins"] = tripAdapterV2.get_trip_origins(d_filter)
+    conn.commit()
+    return jsonify(result)
+
+
+@app.route("/v2/trips/destinations")
+@requires_auth
+def get_trips_destinations():
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    result = {}
+    result["trip_destinations"] = tripAdapterV2.get_trip_destinations(d_filter)
     conn.commit()
     return jsonify(result)
 
