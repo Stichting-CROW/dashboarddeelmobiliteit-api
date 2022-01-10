@@ -70,6 +70,7 @@ class ACL():
         self.municipality_filters = set()
         self.hr_municipality_filters = []
         self.zone_filters = set()
+        self.default_acl = DefaultACL()
 
     def check_municipality_code(self, municipality_code):
         if not self.has_municipality_filter():
@@ -239,7 +240,7 @@ class ACL():
         if self.has_municipality_filter():
             municipalities = self.hr_municipality_filters
         else: 
-            municipalities = self.default_municipalities(cur)
+            municipalities = self.default_acl.default_municipalities(cur)
         data["municipalities"] = municipalities
 
         operators = []
@@ -247,22 +248,25 @@ class ACL():
             for operator in self.operator_filters:
                 operators.append({"system_id": operator, "name": operator.capitalize()})
         else:
-            operators = self.default_operators()
+            operators = self.default_acl.default_operators()
         data["operators"] = operators
         return data
-
-
+        
+class DefaultACL:
     # Temporary static list of municipalities, that should be shown when filtering on municipalities is not enforced.
     def default_municipalities(self, cur):
         data = []
         stmt = """
-            SELECT name, municipality 
+            SELECT municipalities_with_data.name, municipality, zone_id
             FROM municipalities_with_data 
+            JOIN zones
+            USING(municipality)
+            WHERE zone_type = 'municipality'
             ORDER BY name;
         """
         cur.execute(stmt)
         for municipality in cur.fetchall():
-            data.append({"gm_code": municipality[1], "name": municipality[0]})
+            data.append({"gm_code": municipality[1], "name": municipality[0], "zone_id": municipality[2]})
         return data
 
     # Temporary static list of operators, should be shown when filtering on operator is not enforced.
@@ -286,5 +290,13 @@ class ACL():
         operators.append({"system_id": "tier", "name": "TIER"})
         return operators
 
+    def serialize(self, conn):
+        data = {}
+        municipalities = self.default_municipalities(conn.cursor())
+        data["municipalities"] = municipalities
+        operators = self.default_operators()
+        data["operators"] = operators
+        data["zones"] = []
+        return data
 
-        
+

@@ -22,7 +22,6 @@ import rentals
 import report.generate_xlsx
 import export_raw_data.export_to_zip
 import public_zoning_stats
-import public_vehicles
 import audit_log
 import stats_aggregated_availability
 import stats_aggregated_rentals
@@ -44,6 +43,7 @@ tripAdapter = trips.Trips(conn)
 tripAdapterV2 = trips_v2.Trips(conn)
 zoneAdapter = zones.Zones(conn)
 rentalAdapter = rentals.Rentals(conn)
+defaultAccessControl = access_control.DefaultACL()
 accessControl = access_control.AccessControl(conn)
 adminControl = admin_user.AdminControl(conn)
 statsOvertime = stats_over_time.StatsOverTime(conn)
@@ -354,15 +354,30 @@ def get_occupancy_zones():
     result = publicZonesAdapter.get_stats()
     return jsonify(result)
 
-publicVehiclesAdapter = public_vehicles.PublicAvailableVehicles(conn)
-# MVP endpoint to retrieve public information of zones.
+
 @app.route("/public/vehicles_in_public_space", methods=['GET'])
 def get_vehicles_in_public_space():
-    result = publicVehiclesAdapter.get_vehicles()
+    d_filter = data_filter.DataFilter.build(request.args)
+    
+    result = {}
+    result["vehicles_in_public_space"] = parkEventsAdapter.get_public_park_events(d_filter) 
     return jsonify(result)
 
-parkEventsAdapter = park_events.ParkEvents(conn)
 
+
+@app.route("/public/filters", methods=['GET'])
+def get_filters():
+    d_filter = data_filter.DataFilter.build(request.args)
+    
+    result = {}
+    result["filter_values"] = defaultAccessControl.serialize(conn)
+    print(d_filter.has_gmcode())
+    if d_filter.has_gmcode():
+        result["filter_values"]["zones"] = zoneAdapter.list_zones(d_filter, include_custom_zones=False)
+    return jsonify(result)
+
+
+parkEventsAdapter = park_events.ParkEvents(conn)
 @app.route("/park_events", methods=['GET'])
 @requires_auth
 def get_park_events():
@@ -372,7 +387,7 @@ def get_park_events():
         return not_authorized(error)
 
     result = {}
-    result["park_events"] = parkEventsAdapter.get_park_events(d_filter) 
+    result["park_events"] = parkEventsAdapter.get_private_park_events(d_filter) 
     return jsonify(result)
 
 @app.route("/park_events/stats")

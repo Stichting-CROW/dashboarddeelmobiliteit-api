@@ -2,12 +2,22 @@ import json
 from bson import json_util
 import psycopg2.extras
 import zones
+from datetime import datetime
 from flask import g
 
 class ParkEvents():
     def __init__(self, conn):
         self.conn = conn
         self.zones = zones.Zones(conn)
+
+    def get_private_park_events(self, d_filter):
+        rows = self.get_park_events(d_filter)
+        return self.serialize_park_events(rows)
+
+    def get_public_park_events(self, d_filter):
+        d_filter.timestamp = datetime.now()
+        rows = self.get_park_events(d_filter)
+        return self.serialize_public_park_events(rows)
 
     def get_park_events(self, d_filter):
         cur = self.conn.cursor()
@@ -33,7 +43,7 @@ class ParkEvents():
             d_filter.has_operator_filter(), d_filter.get_operators(),
             d_filter.has_form_factor_filter(), d_filter.get_form_factors(),
             d_filter.include_unknown_form_factors()))
-        return self.serialize_park_events(cur.fetchall())
+        return cur.fetchall()
 
     def get_stats_per_zone(self, d_filter, zone_id):
         cur = self.conn.cursor()
@@ -111,6 +121,23 @@ class ParkEvents():
         data["end_time"] = park_event[5]
         data["form_factor"] = park_event[6]
         return data
+
+    def serialize_public_park_events(self, park_events):
+        result = []
+        for park_event in park_events:
+            result.append(self.serialize_public_park_event(park_event))
+
+        return result
+        
+    def serialize_public_park_event(self, park_event):
+        data = {}
+        data["system_id"] = park_event[0]
+        data["location"] = {}
+        data["location"]["latitude"] = park_event[2] 
+        data["location"]["longitude"] = park_event[3]
+        data["form_factor"] = park_event[6]
+        return data
+
 
 
        

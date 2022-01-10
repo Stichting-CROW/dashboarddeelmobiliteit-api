@@ -6,14 +6,15 @@ class Zones():
     def __init__(self, conn):
         self.conn = conn    
 
-    def list_zones(self, d_filter):
+    def list_zones(self, d_filter, include_custom_zones=True):
         cur = self.conn.cursor()
         stmt = """
             SELECT zone_id, name, owner, municipality, zone_type
             FROM zones
             WHERE municipality = %s
+            and (true = %s or zone_type != 'custom')   
         """
-        cur.execute(stmt, (d_filter.get_gmcode(),))
+        cur.execute(stmt, (d_filter.get_gmcode(), include_custom_zones))
         self.conn.commit()
         return self.serialize_zones(cur.fetchall())
 
