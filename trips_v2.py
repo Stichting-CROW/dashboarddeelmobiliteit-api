@@ -32,8 +32,7 @@ class Trips():
         start_time >= %s
         AND end_time <= %s
         AND (false = %s or 
-            (ST_Within(start_location, temp_a.filter_area) OR
-             ST_Within(end_location, temp_a.filter_area) ))
+            ST_Within(start_location, temp_a.filter_area))
         AND (false = %s or trips.system_id IN %s)
         AND (false = %s or 
                 (form_factor in %s or (true = %s and form_factor is null))
@@ -63,15 +62,14 @@ class Trips():
 			    ST_Transform(end_location::geometry, 3857)
 		    ) * cosd(ST_Y(start_location)
         ) / 100) * 100 as distance_in_meters
-        FROM trips CROSS JOIN temp_a
+        FROM trips
         LEFT JOIN vehicle_type
         ON trips.vehicle_type_id = vehicle_type.vehicle_type_id
         WHERE 
         start_time >= %s
         AND end_time <= %s
         AND (false = %s or 
-            (ST_Within(start_location, temp_a.filter_area) OR
-             ST_Within(end_location, temp_a.filter_area) ))
+            ST_Within(end_location, (SELECT filter_area from temp_a)))
         AND (false = %s or trips.system_id IN %s)
         AND (false = %s or 
                 (form_factor in %s or (true = %s and form_factor is null))
@@ -82,6 +80,7 @@ class Trips():
             d_filter.has_operator_filter(), d_filter.get_operators(),
             d_filter.has_form_factor_filter(), d_filter.get_form_factors(),
             d_filter.include_unknown_form_factors()))
+        print(cur.query)
         return self.serialize_trip_events(cur.fetchall())
 
     def query_stats(self, zone_id, d_filter):

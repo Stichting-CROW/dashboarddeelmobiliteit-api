@@ -9,6 +9,7 @@ import os
 import json
 import io
 import shutil
+import time
 
 import trips
 import trips_v2
@@ -256,14 +257,19 @@ def get_trips_origins():
 @app.route("/v2/trips/destinations")
 @requires_auth
 def get_trips_destinations():
+    print("start")
+    print(time.time())
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
         return not_authorized(error)
-
+    print(time.time())
     result = {}
     result["trip_destinations"] = tripAdapterV2.get_trip_destinations(d_filter)
+    print(time.time())
     conn.commit()
+    print("end")
+    print(time.time())
     return jsonify(result)
 
 @app.route("/rentals")
@@ -400,6 +406,18 @@ def get_park_events_stats():
 
     result = {}
     result["park_event_stats"] = parkEventsAdapter.get_stats(d_filter) 
+    return jsonify(result)
+
+@app.route("/v2/park_events/stats")
+@requires_auth
+def get_park_events_stats_v2():
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    result = {}
+    result["park_event_stats"] = parkEventsAdapter.get_park_event_stats(d_filter) 
     return jsonify(result)
 
 @app.route("/stats/available_bikes")

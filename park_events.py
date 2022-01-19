@@ -138,8 +138,80 @@ class ParkEvents():
         data["form_factor"] = park_event[6]
         return data
 
+    def get_park_event_stats(self, d_filter):
+        cur = self.conn.cursor()
+        stmt = """WITH park_event_stats AS 
+            (SELECT zone_id,
+            CASE 
+                WHEN datef < '1 HOUR' THEN 0
+                WHEN datef >= '1 HOUR' and datef < '1 DAY' THEN 1
+                WHEN datef >= '1 DAY' and datef < '4 DAYS' THEN 2
+                ELSE 3
+            END as bucket,
+            SUM(sum_bikes) as number_of_park_events
+            FROM
+                (SELECT date_trunc('hour', %s - start_time) as datef, zone_id,
+                    count(1) as sum_bikes
+                FROM (
+                        SELECT start_time, park_events.system_id, zones.zone_id 
+                        FROM park_events
+                        JOIN zones
+                        ON ST_WITHIN(location, area)
+                        LEFT JOIN vehicle_type 
+                        USING(vehicle_type_id)
+                        WHERE start_time < %s
+                        AND (end_time > %s  or end_time is null)
+                        AND (false = %s or park_events.system_id IN %s)
+                        AND (false = %s or 
+                                (form_factor in %s or (true = %s and form_factor is null))
+                            )
+                        AND zone_id in %s
+                    ) AS q1
+                    GROUP BY datef, zone_id, system_id) q1
+                GROUP BY zone_id, bucket
+            ORDER BY zone_id, bucket),
+            grouped_park_event_stats
+            AS 
+                (SELECT zone_id, json_object_agg(bucket, number_of_park_events) as stats
+                FROM park_event_stats
+                GROUP BY zone_id)
+
+            SELECT zone_id, name, municipality, zone_type, stats
+            FROM zones
+            LEFT JOIN grouped_park_event_stats
+            USING(zone_id)
+            WHERE zones.zone_id in %s;
+        """
+        zone_ids = tuple([zone_id for zone_id in  d_filter.get_zones()])
+        cur.execute(stmt, (d_filter.get_timestamp(), d_filter.get_timestamp(), d_filter.get_timestamp(),
+            d_filter.has_operator_filter(), d_filter.get_operators(), 
+            d_filter.has_form_factor_filter(), d_filter.get_form_factors(), 
+            d_filter.include_unknown_form_factors(), zone_ids, zone_ids))
+        zones = cur.fetchall()
+        result_zones = []
+        for zone in zones:
+            result_zones.append(self.serialize_park_event_stat(zone))
+        return result_zones
 
 
-       
+    def serialize_park_event_stat(self, zone):
+        data = {}
+        data["zone_id"] = zone[0]
+        data["name"] = zone[1] 
+        data["municipality"] = zone[2]
+        data["zone_type"] = zone[3]
+        data["stats"] = self.serialize_park_event_stat_details(zone[4])
+        return data      
 
+    def serialize_park_event_stat_details(self, details):
+        data = []
+        print(details)
+        if details == None:
+            return [0, 0, 0, 0]
+        for x in range(4):
+            if str(x) in details:
+                data.append(details[str(x)])
+            else:
+                data.append(0)
+        return data
 
