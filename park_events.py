@@ -1,6 +1,7 @@
 import json
 from bson import json_util
 import psycopg2.extras
+from main import get_park_events_stats
 import zones
 from datetime import datetime
 from flask import g
@@ -138,6 +139,11 @@ class ParkEvents():
         data["form_factor"] = park_event[6]
         return data
 
+    # Same data as private endpoint, with the difference that you only can get the data for this moment
+    def get_public_park_event_stats(self, d_filter):
+        d_filter.timestamp = datetime.now()
+        return self.get_park_events_stats(d_filter)
+
     def get_park_event_stats(self, d_filter):
         cur = self.conn.cursor()
         stmt = """WITH park_event_stats AS 
@@ -205,7 +211,6 @@ class ParkEvents():
 
     def serialize_park_event_stat_details(self, details):
         data = []
-        print(details)
         if details == None:
             return [0, 0, 0, 0]
         for x in range(4):

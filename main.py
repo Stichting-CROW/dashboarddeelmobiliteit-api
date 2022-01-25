@@ -420,6 +420,16 @@ def get_park_events_stats_v2():
     result["park_event_stats"] = parkEventsAdapter.get_park_event_stats(d_filter) 
     return jsonify(result)
 
+
+# In theory it's possible to retreive data from custom zones. That is not really a problem but can be fixed in the future.
+@app.route("/public/park_events/stats")
+def get_park_events_stats_v2():
+    d_filter = data_filter.DataFilter.build(request.args)
+
+    result = {}
+    result["park_event_stats"] = parkEventsAdapter.get_public_park_event_stats(d_filter) 
+    return jsonify(result)
+
 @app.route("/stats/available_bikes")
 @requires_auth
 def get_available_bicycles():
