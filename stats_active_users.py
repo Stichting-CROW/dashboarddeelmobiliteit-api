@@ -1,6 +1,7 @@
 import hashlib
 
 def create_sha1_hash(str): 
+  str += ":dashboarddeelmobiliteit"
   # encode the string
   encoded_str = str.encode()
   # create a sha1 hash object initialized with the encoded string
