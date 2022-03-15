@@ -30,11 +30,13 @@ def register_active_user(conn, user):
       INSERT INTO active_user_stats
       (user_hash, role, active_on)
       VALUES (%s, %s, NOW())
-      ON CONFLICT (active_user_on_date)
+      ON CONFLICT ON CONSTRAINT active_user_on_date
       DO NOTHING;
   """
   try:
       cur.execute(stmt, (create_sha1_hash(user["username"]), role))
-  except:
+      conn.commit()
+  except Exception as e:
+      print(e)
       conn.rollback()
   return True

@@ -598,10 +598,10 @@ def delete_user():
 def show_human_readable_permission():
     data = g.acl
     cur2 = conn.cursor()
-    result = jsonify(data.human_readable_serialize(cur2))
+    result = data.human_readable_serialize(cur2)
     # Store user stat in database
     stats_active_users.register_active_user(conn, result)
-    return result
+    return jsonify(result)
 
 @app.route("/aggregated_stats/available_vehicles")
 @requires_auth
