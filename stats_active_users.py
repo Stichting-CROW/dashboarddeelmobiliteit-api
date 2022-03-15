@@ -20,9 +20,9 @@ def register_active_user(conn, user):
   role = None
   if user.is_admin:
     role = 'admin'
-  else if user.filter_operator: 
+  elif user.filter_operator: 
     role = 'operator'
-  else if user.filter.municipality:
+  elif user.filter.municipality:
     role = 'municipality'
 
   cur = conn.cursor()
