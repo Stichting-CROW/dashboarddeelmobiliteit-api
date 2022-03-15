@@ -24,6 +24,7 @@ import report.generate_xlsx
 import export_raw_data.export_to_zip
 import public_zoning_stats
 import audit_log
+import stats_active_users
 import stats_aggregated_availability
 import stats_aggregated_rentals
 
@@ -597,8 +598,10 @@ def delete_user():
 def show_human_readable_permission():
     data = g.acl
     cur2 = conn.cursor()
-    return jsonify(data.human_readable_serialize(cur2))
-
+    result = jsonify(data.human_readable_serialize(cur2))
+    # Store user stat in database
+    stats_active_users.register_active_user(conn, result)
+    return result
 
 @app.route("/aggregated_stats/available_vehicles")
 @requires_auth
