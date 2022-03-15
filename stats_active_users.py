@@ -14,15 +14,15 @@ def register_active_user(conn, user):
   if not conn:
     return False
 
-  if not user.username:
+  if not user["username"]:
     return False
 
   role = None
-  if user.is_admin:
+  if user["is_admin"]:
     role = 'admin'
-  elif user.filter_operator: 
+  elif user["filter_operator"]: 
     role = 'operator'
-  elif user.filter.municipality:
+  elif user["filter_municipality"]:
     role = 'municipality'
 
   cur = conn.cursor()
@@ -34,7 +34,7 @@ def register_active_user(conn, user):
       DO NOTHING;
   """
   try:
-      cur.execute(stmt, (create_sha1_hash(user.username), role))
+      cur.execute(stmt, (create_sha1_hash(user["username"]), role))
   except:
       conn.rollback()
   return True
