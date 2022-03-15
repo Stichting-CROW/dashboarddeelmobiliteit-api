@@ -1,7 +1,6 @@
 import json
 from bson import json_util
 import psycopg2.extras
-from main import get_park_events_stats
 import zones
 from datetime import datetime
 from flask import g

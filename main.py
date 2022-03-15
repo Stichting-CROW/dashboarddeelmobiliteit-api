@@ -423,7 +423,7 @@ def get_park_events_stats_v2():
 
 # In theory it's possible to retreive data from custom zones. That is not really a problem but can be fixed in the future.
 @app.route("/public/park_events/stats")
-def get_park_events_stats_v2():
+def get_public_park_events_stats():
     d_filter = data_filter.DataFilter.build(request.args)
 
     result = {}
