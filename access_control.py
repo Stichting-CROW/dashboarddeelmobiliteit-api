@@ -269,7 +269,7 @@ class DefaultACL:
             data.append({"gm_code": municipality[1], "name": municipality[0], "zone_id": municipality[2]})
         return data
 
-    # Temporary static list of operators, should be shown when filtering on operator is not enforced.
+    # Static list of operators, should be shown when filtering on operator is not enforced.
     def default_operators(self):
         operators = []
         operators.append({"system_id": "cykl", "name": "Cykl"})
@@ -281,6 +281,7 @@ class DefaultACL:
         operators.append({"system_id": "check", "name": "CHECK"})
         operators.append({"system_id": "felyx", "name": "Felyx"})
         operators.append({"system_id": "deelfietsnederland", "name": "Deelfiets Nederland"})
+        operators.append({"system_id": "deelfietsnederland-testing", "name": "Deelfiets Nederland (testing)"})
         operators.append({"system_id": "keobike", "name": "Keobike"})
         operators.append({"system_id": "lime", "name": "Lime"})
         operators.append({"system_id": "baqme", "name": "BAQME"})
@@ -299,5 +300,3 @@ class DefaultACL:
         data["operators"] = operators
         data["zones"] = []
         return data
-
-
