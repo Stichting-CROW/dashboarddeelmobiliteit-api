@@ -290,7 +290,10 @@ class DefaultACL:
         operators.append({"system_id": "hely", "name": "Hely"})
         operators.append({"system_id": "tier", "name": "TIER"})
         operators.append({"system_id": "bird", "name": "Bird"})
-        operators.append({"system_id": "dott", "name": "dott"})
+        operators.append({"system_id": "bolt", "name": "Bolt"})
+        operators.append({"system_id": "bondi", "name": "bondi"})
+        operators.append({"system_id": "baqme2", "name": "baqme (acceptatie feed)"})
+        operators.append({"system_id": "moveyou", "name": "MoveYou"})
         return operators
 
     def serialize(self, conn):

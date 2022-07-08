@@ -110,6 +110,7 @@ def unauthorized(error):
     response.status_code = 401
     return response
 
+
 @app.route("/cycles")
 @requires_auth
 def bike_locations():
