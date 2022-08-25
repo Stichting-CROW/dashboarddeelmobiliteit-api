@@ -9,10 +9,13 @@ class Zones():
     def list_zones(self, d_filter, include_custom_zones=True):
         cur = self.conn.cursor()
         stmt = """
-            SELECT zone_id, name, owner, municipality, zone_type
+            SELECT zone_id, zones.name, owner, municipality, zone_type
             FROM zones
+            LEFT JOIN geographies
+            USING (zone_id)
             WHERE municipality = %s
-            and (true = %s or zone_type != 'custom')   
+            AND (true = %s or zone_type != 'custom')
+            AND retire_date is null;
         """
         cur.execute(stmt, (d_filter.get_gmcode(), include_custom_zones))
         self.conn.commit()
