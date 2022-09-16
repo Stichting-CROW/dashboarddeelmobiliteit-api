@@ -355,13 +355,23 @@ def insert_zone():
         raise InvalidUsage(err, status_code=400)
     return jsonify(result), 201
 
-publicZonesAdapter = public_zoning_stats.PublicZoningStats(conn)
-# MVP endpoint to retrieve public information of zones.
+# publicZonesAdapter = public_zoning_stats.PublicZoningStats(conn)
 @app.route("/public/zones", methods=['GET'])
-def get_occupancy_zones():
-    result = publicZonesAdapter.get_stats()
-    return jsonify(result)
+def get_public_zones():
+    d_filter = data_filter.DataFilter.build(request.args)
+    if not (d_filter.has_gmcode() or d_filter.has_zone_filter()):
+        raise InvalidUsage("No gm_code or zone_ids.", status_code=400)
 
+    result = {}
+    if request.args.get("include_geojson") and request.args.get("include_geojson") == 'true':
+        result["zones"] = zoneAdapter.get_zones(d_filter)
+    else:
+        result["zones"] = zoneAdapter.list_zones(d_filter) 
+
+    conn.commit()
+    return jsonify(result)
+    # result = publicZonesAdapter.get_zones()
+    # return jsonify(result)
 
 @app.route("/public/vehicles_in_public_space", methods=['GET'])
 def get_vehicles_in_public_space():

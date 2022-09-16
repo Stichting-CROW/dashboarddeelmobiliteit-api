@@ -120,6 +120,3 @@ class Zones():
         if len(zone) > 5:
             data["geojson"] = json.loads(zone[5])
         return data
-       
-
-
