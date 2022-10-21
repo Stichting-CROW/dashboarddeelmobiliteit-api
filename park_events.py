@@ -6,21 +6,20 @@ from datetime import datetime
 from flask import g
 
 class ParkEvents():
-    def __init__(self, conn):
-        self.conn = conn
-        self.zones = zones.Zones(conn)
+    def __init__(self):
+        self.zones = zones.Zones()
 
-    def get_private_park_events(self, d_filter):
-        rows = self.get_park_events(d_filter)
+    def get_private_park_events(self, conn, d_filter):
+        rows = self.get_park_events(conn, d_filter)
         return self.serialize_park_events(rows)
 
-    def get_public_park_events(self, d_filter):
+    def get_public_park_events(self, conn, d_filter):
         d_filter.timestamp = datetime.now()
-        rows = self.get_park_events(d_filter)
+        rows = self.get_park_events(conn, d_filter)
         return self.serialize_public_park_events(rows)
 
-    def get_park_events(self, d_filter):
-        cur = self.conn.cursor()
+    def get_park_events(self, conn, d_filter):
+        cur = conn.cursor()
         stmt = """ 
         SELECT park_events.system_id, bike_id, 
 	        ST_Y(location), ST_X(location), 
@@ -45,8 +44,8 @@ class ParkEvents():
             d_filter.include_unknown_form_factors()))
         return cur.fetchall()
 
-    def get_stats_per_zone(self, d_filter, zone_id):
-        cur = self.conn.cursor()
+    def get_stats_per_zone(self, conn, d_filter, zone_id):
+        cur = conn.cursor()
         stmt = """ 
         SELECT 
             CASE 
@@ -95,10 +94,10 @@ class ParkEvents():
 
 
 
-    def get_stats(self, d_filter):
+    def get_stats(self, conn, d_filter):
         records = []
         for zone_id in d_filter.get_zones():
-            result = self.get_stats_per_zone(d_filter, zone_id)
+            result = self.get_stats_per_zone(conn, d_filter, zone_id)
             records.append(result)
         return records
 
@@ -139,12 +138,12 @@ class ParkEvents():
         return data
 
     # Same data as private endpoint, with the difference that you only can get the data for this moment
-    def get_public_park_event_stats(self, d_filter):
+    def get_public_park_event_stats(self, conn, d_filter):
         d_filter.timestamp = datetime.now()
-        return self.get_park_events_stats(d_filter)
+        return self.get_park_events_stats(conn, d_filter)
 
-    def get_park_event_stats(self, d_filter):
-        cur = self.conn.cursor()
+    def get_park_event_stats(self, conn, d_filter):
+        cur = conn.cursor()
         stmt = """WITH park_event_stats AS 
             (SELECT zone_id,
             CASE 

@@ -4,12 +4,8 @@ import psycopg2.extras
 import zones
 
 class Trips():
-    def __init__(self, conn):
-        self.conn = conn
-        self.zones = zones.Zones(conn)
-
-    def get_trip_origins(self, d_filter):
-        cur = self.conn.cursor()
+    def get_trip_origins(self, conn, d_filter):
+        cur = conn.cursor()
         stmt = """ 
         WITH temp_a (filter_area) AS
             (
@@ -45,8 +41,8 @@ class Trips():
             d_filter.include_unknown_form_factors()))
         return self.serialize_trip_events(cur.fetchall())
 
-    def get_trip_destinations(self, d_filter):
-        cur = self.conn.cursor()
+    def get_trip_destinations(self, conn, d_filter):
+        cur = conn.cursor()
         stmt = """ 
         WITH temp_a (filter_area) AS
             (
@@ -80,11 +76,10 @@ class Trips():
             d_filter.has_operator_filter(), d_filter.get_operators(),
             d_filter.has_form_factor_filter(), d_filter.get_form_factors(),
             d_filter.include_unknown_form_factors()))
-        print(cur.query)
         return self.serialize_trip_events(cur.fetchall())
 
-    def query_stats(self, zone_id, d_filter):
-        cur = self.conn.cursor()
+    def query_stats(self, conn, zone_id, d_filter):
+        cur = conn.cursor()
         stmt = """WITH temp_a (filter_area) AS
             (SELECT st_union(area) 
 	            FROM zones WHERE zone_id = %s)

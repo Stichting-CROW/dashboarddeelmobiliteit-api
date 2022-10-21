@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, g, abort, send_file, after_this_reque
 from functools import wraps
 
 from flask.json import JSONEncoder
+from psycopg2.pool import SimpleConnectionPool
 from datetime import date
 import datetime
 import psycopg2
@@ -39,7 +40,7 @@ if "password" in os.environ:
     conn_str += " user=deelfietsdashboard password={}".format(os.environ['password'])
 
 
-conn = psycopg2.connect(conn_str)
+# conn = psycopg2.connect(conn_str)
 
 pgpool = SimpleConnectionPool(minconn=1, 
         maxconn=10, 
@@ -55,6 +56,7 @@ adminControl = admin_user.AdminControl()
 statsOvertime = stats_over_time.StatsOverTime()
 statsAggregatedAvailability = stats_aggregated_availability.AggregatedStatsAvailability()
 statsAggregatedRentals = stats_aggregated_rentals.AggregatedStatsRentals()
+parkEventsAdapter = park_events.ParkEvents()
 
 # Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
@@ -87,7 +89,7 @@ class InvalidUsage(Exception):
 def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        g.acl = accessControl.retrieve_acl_user(request)
+        g.acl = accessControl.retrieve_acl_user(request, get_conn())
         if not g.acl:  
             abort(401)
         return f(*args, **kwargs)
@@ -100,6 +102,18 @@ def not_authorized(error_msg):
 
 app = Flask(__name__)
 app.json_encoder = CustomJSONEncoder
+
+def get_conn():
+    if 'db' not in g:
+        g.db = pgpool.getconn()
+    return g.db
+
+@app.teardown_appcontext
+def close_db(e=None):
+    db = g.pop('db', None)
+
+    if db is not None:
+        pgpool.putconn(db)
 
 @app.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
@@ -115,45 +129,47 @@ def unauthorized(error):
     return response
 
 
-@app.route("/cycles")
-@requires_auth
-def bike_locations():
-    if not g.acl.is_admin():
-        return not_authorized("This endpoint can only be used by administrators.")  
+# @app.route("/cycles")
+# @requires_auth
+# def bike_locations():
+#     if not g.acl.is_admin():
+#         return not_authorized("This endpoint can only be used by administrators.")  
 
-    if "sw_lng" in request.args and "sw_lat" in request.args and "ne_lng" in request.args and "ne_lat" in request.args:
-        result = get_bicycles_within_bounding_box(
-            request.args.get("sw_lng"),
-            request.args.get("sw_lat"),
-            request.args.get("ne_lng"),
-            request.args.get("ne_lat"))
-    elif request.args.get('gm_code'):
-        result = get_bicycles_in_municipality(request.args.get('gm_code'))
-    else:
-        result = get_all_bicycles()
+#     if "sw_lng" in request.args and "sw_lat" in request.args and "ne_lng" in request.args and "ne_lat" in request.args:
+#         result = get_bicycles_within_bounding_box(
+#             request.args.get("sw_lng"),
+#             request.args.get("sw_lat"),
+#             request.args.get("ne_lng"),
+#             request.args.get("ne_lat"))
+#     elif request.args.get('gm_code'):
+#         result = get_bicycles_in_municipality(request.args.get('gm_code'))
+#     else:
+#         result = get_all_bicycles()
 
-    output = {}
-    output["bicycles"] = []
-    for record in result:
-        output["bicycles"].append(serialize_location(record))
+#     output = {}
+#     output["bicycles"] = []
+#     for record in result:
+#         output["bicycles"].append(serialize_location(record))
 
-    conn.commit()
-    return jsonify(output)
+#     conn.commit()
+#     return jsonify(output)
 
-def serialize_location(result):
-    data = {}
-    data["timestamp"] = result[0]
-    data["bike_id"] = result[1]
-    data["location"] = {}
-    data["location"]["latitude"] = result[2] 
-    data["location"]["longitude"] = result[3]
-    data["system_id"] = result[4]
-    data["is_check_in"] = result[5]
-    data["is_check_out"] = result[6]
-    return data
+# def serialize_location(result):
+#     data = {}
+#     data["timestamp"] = result[0]
+#     data["bike_id"] = result[1]
+#     data["location"] = {}
+#     data["location"]["latitude"] = result[2] 
+#     data["location"]["longitude"] = result[3]
+#     data["system_id"] = result[4]
+#     data["is_check_in"] = result[5]
+#     data["is_check_out"] = result[6]
+#     return data
 
 
 def get_bicycles_within_bounding_box(sw_lng, sw_lat, ne_lng, ne_lat):
+    conn = get_conn()
+    cur = conn.cursor()
     stmt = """
         SELECT last_time_imported, last_detection_bike.bike_id,
             ST_Y(location), ST_X(location), last_detection_bike.system_id,
@@ -168,6 +184,8 @@ def get_bicycles_within_bounding_box(sw_lng, sw_lat, ne_lng, ne_lat):
     return cur.fetchall()
 
 def get_bicycles_in_municipality(municipality):
+    conn = get_conn()
+    cur = conn.cursor()
     stmt = """SELECT last_time_imported, q1.bike_id,
         ST_Y(location), ST_X(location), q1.system_id, 
         is_check_in, is_check_out 
@@ -187,6 +205,8 @@ def get_bicycles_in_municipality(municipality):
     return cur.fetchall()
 
 def get_all_bicycles():
+    conn = get_conn()
+    cur = conn.cursor()
     stmt = """SELECT last_time_imported, last_detection_cycle.bike_id,
             ST_Y(location), ST_X(location), last_detection_cycle.system_id, 
             is_check_in, is_check_out
@@ -195,10 +215,11 @@ def get_all_bicycles():
     return cur.fetchall()
 
 @app.route("/area")
-def get_areas(): 
+def get_areas():
+    conn = get_conn()
     output = {}
     if request.args.get('gm_code'):
-        area = get_municipality_area(request.args.get('gm_code'))[0]
+        area = get_municipality_area(conn, request.args.get('gm_code'))[0]
         if area:
             output["geojson"] = json.loads(area)
             output["gm_code"] = request.args.get('gm_code')
@@ -206,7 +227,8 @@ def get_areas():
     conn.commit()
     return jsonify(output)
 
-def get_municipality_area(municipality):
+def get_municipality_area(conn, municipality):
+    cur = conn.cursor()
     stmt = """
         SELECT ST_AsGeoJSON(geom)
         FROM municipalities
@@ -217,19 +239,21 @@ def get_municipality_area(municipality):
 @app.route("/trips")
 @requires_auth
 def get_trips():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
         return not_authorized(error)
 
     result = {}
-    result["trips"] = tripAdapter.get_trips(d_filter)
+    result["trips"] = tripAdapter.get_trips(conn, d_filter)
     conn.commit()
     return jsonify(result)
 
 @app.route("/trips/stats")
 @requires_auth
 def get_trips_stats():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
@@ -241,7 +265,7 @@ def get_trips_stats():
         raise InvalidUsage("No end_time specified", status_code=400)
 
     result = {}
-    result["trip_stats"] = tripAdapter.get_stats(d_filter)
+    result["trip_stats"] = tripAdapter.get_stats(conn, d_filter)
     conn.commit()
     return jsonify(result)
 
@@ -249,13 +273,14 @@ def get_trips_stats():
 @app.route("/v2/trips/origins")
 @requires_auth
 def get_trips_origins():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
         return not_authorized(error)
 
     result = {}
-    result["trip_origins"] = tripAdapterV2.get_trip_origins(d_filter)
+    result["trip_origins"] = tripAdapterV2.get_trip_origins(conn, d_filter)
     conn.commit()
     return jsonify(result)
 
@@ -263,38 +288,40 @@ def get_trips_origins():
 @app.route("/v2/trips/destinations")
 @requires_auth
 def get_trips_destinations():
-    print("start")
-    print(time.time())
+    conn = get_conn()
+
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
         return not_authorized(error)
-    print(time.time())
+    
     result = {}
-    result["trip_destinations"] = tripAdapterV2.get_trip_destinations(d_filter)
+    result["trip_destinations"] = tripAdapterV2.get_trip_destinations(conn, d_filter)
     print(time.time())
     conn.commit()
-    print("end")
-    print(time.time())
     return jsonify(result)
 
 @app.route("/rentals")
 @requires_auth
 def get_rentals():
+    conn = get_conn()
+
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
         return not_authorized(error)
 
     result = {}
-    result["start_rentals"] = rentalAdapter.get_start_trips(d_filter)
-    result["end_rentals"] = rentalAdapter.get_end_trips(d_filter)
+    result["start_rentals"] = rentalAdapter.get_start_trips(conn, d_filter)
+    result["end_rentals"] = rentalAdapter.get_end_trips(conn, d_filter)
     conn.commit()
     return jsonify(result)
 
 @app.route("/rentals/stats")
 @requires_auth
 def get_rentals_stats():
+    conn = get_conn()
+
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
@@ -306,21 +333,23 @@ def get_rentals_stats():
         raise InvalidUsage("No end_time specified", status_code=400)
 
     result = {}
-    result["rental_stats"] = rentalAdapter.get_stats(d_filter)
+    result["rental_stats"] = rentalAdapter.get_stats(conn, d_filter)
     conn.commit()
     return jsonify(result)
 
 @app.route("/zones")
 def get_zones():
+    conn = get_conn()
+
     d_filter = data_filter.DataFilter.build(request.args)
     if not (d_filter.has_gmcode() or d_filter.has_zone_filter()):
         raise InvalidUsage("No gm_code or zone_ids.", status_code=400)
     
     result = {}
     if request.args.get("include_geojson") and request.args.get("include_geojson") == 'true':
-        result["zones"] = zoneAdapter.get_zones(d_filter)
+        result["zones"] = zoneAdapter.get_zones(conn, d_filter)
     else:
-        result["zones"] = zoneAdapter.list_zones(d_filter) 
+        result["zones"] = zoneAdapter.list_zones(conn, d_filter) 
 
     conn.commit()
     return jsonify(result)
@@ -328,19 +357,22 @@ def get_zones():
 @app.route("/zone/<zone_id>", methods=['DELETE'])
 @requires_auth
 def zone(zone_id):
+    conn = get_conn()
+
     d_filter = data_filter.DataFilter()
     d_filter.add_zone(zone_id)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
         return not_authorized(error)
 
-    deleted = zoneAdapter.delete_zone(zone_id)
+    deleted = zoneAdapter.delete_zone(conn, zone_id)
     conn.commit()
     return jsonify({"deleted": deleted})
 
 @app.route("/zone", methods=['PUT', 'POST'])
 @requires_auth
 def insert_zone():
+    conn = get_conn()
     try:
         zone_data = json.loads(request.data)
     except:
@@ -354,7 +386,7 @@ def insert_zone():
         return not_authorized(error)
 
 
-    result, err = zoneAdapter.create_zone(zone_data)
+    result, err = zoneAdapter.create_zone(conn, zone_data)
     if err:
         raise InvalidUsage(err, status_code=400)
     return jsonify(result), 201
@@ -362,15 +394,16 @@ def insert_zone():
 # publicZonesAdapter = public_zoning_stats.PublicZoningStats(conn)
 @app.route("/public/zones", methods=['GET'])
 def get_public_zones():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     if not (d_filter.has_gmcode() or d_filter.has_zone_filter()):
         raise InvalidUsage("No gm_code or zone_ids.", status_code=400)
 
     result = {}
     if request.args.get("include_geojson") and request.args.get("include_geojson") == 'true':
-        result["zones"] = zoneAdapter.get_zones(d_filter)
+        result["zones"] = zoneAdapter.get_zones(conn, d_filter)
     else:
-        result["zones"] = zoneAdapter.list_zones(d_filter) 
+        result["zones"] = zoneAdapter.list_zones(conn, d_filter) 
 
     conn.commit()
     return jsonify(result)
@@ -379,76 +412,81 @@ def get_public_zones():
 
 @app.route("/public/vehicles_in_public_space", methods=['GET'])
 def get_vehicles_in_public_space():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     
     result = {}
-    result["vehicles_in_public_space"] = parkEventsAdapter.get_public_park_events(d_filter) 
+    result["vehicles_in_public_space"] = parkEventsAdapter.get_public_park_events(conn, d_filter) 
     return jsonify(result)
-
 
 
 @app.route("/public/filters", methods=['GET'])
 def get_filters():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     
     result = {}
     result["filter_values"] = defaultAccessControl.serialize(conn)
     print(d_filter.has_gmcode())
     if d_filter.has_gmcode():
-        result["filter_values"]["zones"] = zoneAdapter.list_zones(d_filter, include_custom_zones=False)
+        result["filter_values"]["zones"] = zoneAdapter.list_zones(conn, d_filter, include_custom_zones=False)
     return jsonify(result)
 
 
-parkEventsAdapter = park_events.ParkEvents(conn)
 @app.route("/park_events", methods=['GET'])
 @requires_auth
 def get_park_events():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
         return not_authorized(error)
 
     result = {}
-    result["park_events"] = parkEventsAdapter.get_private_park_events(d_filter) 
+    result["park_events"] = parkEventsAdapter.get_private_park_events(conn, d_filter) 
     return jsonify(result)
 
 @app.route("/park_events/stats")
 @requires_auth
 def get_park_events_stats():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
         return not_authorized(error)
 
     result = {}
-    result["park_event_stats"] = parkEventsAdapter.get_stats(d_filter) 
+    result["park_event_stats"] = parkEventsAdapter.get_stats(conn, d_filter) 
     return jsonify(result)
 
 @app.route("/v2/park_events/stats")
 @requires_auth
 def get_park_events_stats_v2():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
         return not_authorized(error)
 
     result = {}
-    result["park_event_stats"] = parkEventsAdapter.get_park_event_stats(d_filter) 
+    result["park_event_stats"] = parkEventsAdapter.get_park_event_stats(conn, d_filter) 
     return jsonify(result)
 
 
 # In theory it's possible to retreive data from custom zones. That is not really a problem but can be fixed in the future.
 @app.route("/public/park_events/stats")
 def get_public_park_events_stats():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
 
     result = {}
-    result["park_event_stats"] = parkEventsAdapter.get_public_park_event_stats(d_filter) 
+    result["park_event_stats"] = parkEventsAdapter.get_public_park_event_stats(conn, d_filter) 
     return jsonify(result)
 
 @app.route("/stats/available_bikes")
 @requires_auth
 def get_available_bicycles():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
@@ -460,12 +498,13 @@ def get_available_bicycles():
         raise InvalidUsage("No end_time specified", status_code=400)
     
     result = {}
-    result["available_bikes"] = statsOvertime.query_stats(d_filter)
+    result["available_bikes"] = statsOvertime.query_stats(conn, d_filter)
     return jsonify(result)
 
 @app.route("/stats/generate_report")
 @requires_auth
 def get_report():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     if not d_filter.has_gmcode():
         raise InvalidUsage("No municipality specified", status_code=400)
@@ -491,6 +530,7 @@ def get_report():
 @app.route("/raw_data")
 @requires_auth
 def get_raw_data():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     if not d_filter.get_start_time():
         raise InvalidUsage("No start_time specified", status_code=400)
@@ -523,6 +563,8 @@ def get_raw_data():
 
 
 def get_raw_gbfs(feed):
+    conn = get_conn()
+    cur = conn.cursor()
     stmt = """SELECT json
         FROM raw_gbfs
         WHERE
@@ -538,16 +580,16 @@ def get_gbfs():
     if request.args.get('feed'):
         data = get_raw_gbfs(request.args.get('feed'))
 
-    conn.commit()
     return jsonify(data)
 
 @app.route("/admin/user/permission", methods=['GET'])
 @requires_auth
 def get_permission():
+    conn = get_conn()
     if request.args.get("username") and not g.acl.is_admin:
         return not_authorized("This user is not an administrator.")
     if request.args.get("username"):
-        data = accessControl.query_acl(request.args.get("username"))
+        data = accessControl.query_acl(conn, request.args.get("username"))
     else: 
         # Default show login of user belonging to token.
         data = g.acl
@@ -557,50 +599,52 @@ def get_permission():
 @app.route("/admin/user/permission", methods=['PUT', 'POST'])
 @requires_auth
 def change_permission():
+    conn = get_conn()
     if not g.acl.is_admin():
         return not_authorized("This user is not an administrator.")
 
-    print(request.get_json())
     err = adminControl.validate(request.get_json())
     if err:
         raise InvalidUsage(err, status_code=400)
-    adminControl.update(request.get_json())
+    adminControl.update(conn, request.get_json())
    
     return jsonify(request.get_json())
 
 @app.route("/admin/user/create", methods=['PUT'])
 @requires_auth
 def create_user():
+    conn = get_conn()
     if not g.acl.is_admin():
         return not_authorized("This user is not an administrator.")
 
-    res, err = adminControl.create_user(request.get_json())    
+    res, err = adminControl.create_user(conn, request.get_json())    
     if not res:
         raise InvalidUsage(err, status_code=400)
 
-    print(request.get_json())
     return jsonify(res)
 
 @app.route("/admin/user/list", methods=['GET'])
 @requires_auth
 def list_user():
+    conn = get_conn()
     if not g.acl.is_admin():
         return not_authorized("This user is not an administrator.")
 
-    res = map(lambda acl: acl.serialize(), adminControl.list_users())
+    res = map(lambda acl: acl.serialize(), adminControl.list_users(conn))
 
     return jsonify(res)
 
 @app.route("/admin/user/delete", methods=['DELETE'])
 @requires_auth
 def delete_user():
+    conn = get_conn()
     if not g.acl.is_admin():
         return not_authorized("This user is not an administrator.")
 
     username = request.args.get('username')
     if not username:
         raise InvalidUsage("Username should be specified as query paramter", username)
-    res = adminControl.delete_user(username)
+    res = adminControl.delete_user(conn, username)
     if res:
         raise InvalidUsage(res, status_code=400)
 
@@ -612,6 +656,7 @@ def delete_user():
 @requires_auth
 def show_human_readable_permission():
     data = g.acl
+    conn = get_conn()
     cur2 = conn.cursor()
     result = data.human_readable_serialize(cur2)
     # Store user stat in database
@@ -621,6 +666,7 @@ def show_human_readable_permission():
 @app.route("/aggregated_stats/available_vehicles")
 @requires_auth
 def get_aggregated_available_vehicles_stats():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
@@ -638,12 +684,13 @@ def get_aggregated_available_vehicles_stats():
         raise InvalidUsage("No end_time specified", status_code=400)
 
     result = {}
-    result["available_vehicles_aggregated_stats"] = statsAggregatedAvailability.get_stats(d_filter, aggregation_level)
+    result["available_vehicles_aggregated_stats"] = statsAggregatedAvailability.get_stats(conn, d_filter, aggregation_level)
     return jsonify(result)
 
 @app.route("/aggregated_stats/rentals")
 @requires_auth
 def get_aggregated_rental_stats():
+    conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
@@ -661,6 +708,6 @@ def get_aggregated_rental_stats():
         raise InvalidUsage("No end_time specified", status_code=400)
 
     result = {}
-    result["rentals_aggregated_stats"] = statsAggregatedRentals.get_stats(d_filter, aggregation_level)
+    result["rentals_aggregated_stats"] = statsAggregatedRentals.get_stats(conn, d_filter, aggregation_level)
     conn.commit()
     return jsonify(result)

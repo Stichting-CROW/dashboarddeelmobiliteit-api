@@ -1,12 +1,9 @@
 import datetime
 
 class StatsOverTime():
-    def __init__(self, conn):
-        self.conn = conn
 
-
-    def query_stats(self, filter):
-        cur = self.conn.cursor()
+    def query_stats(self, conn, filter):
+        cur = conn.cursor()
         start_time = datetime.datetime.strptime(filter.get_start_time(), '%Y-%m-%dT%H:%M:%SZ')
         start_time = start_time.replace(hour=3, minute=0)
         end_time = datetime.datetime.strptime(filter.get_end_time(), '%Y-%m-%dT%H:%M:%SZ')

@@ -4,12 +4,11 @@ import psycopg2.extras
 import zones
 
 class Rentals():
-    def __init__(self, conn):
-        self.conn = conn
-        self.zones = zones.Zones(conn)
+    def __init__(self):
+        self.zones = zones.Zones()
 
-    def get_start_trips(self, d_filter):
-        cur = self.conn.cursor()
+    def get_start_trips(self, conn, d_filter):
+        cur = conn.cursor()
         stmt = """ 
         WITH temp_a (filter_area) AS
             (
@@ -31,8 +30,8 @@ class Rentals():
             d_filter.has_operator_filter(), d_filter.get_operators()))
         return self.serialize_rentals(cur.fetchall(), False)
 
-    def get_end_trips(self, d_filter):
-        cur = self.conn.cursor()
+    def get_end_trips(self, conn, d_filter):
+        cur = conn.cursor()
         stmt = """ 
         WITH temp_a (filter_area) AS
             (
@@ -54,8 +53,8 @@ class Rentals():
             d_filter.has_operator_filter(), d_filter.get_operators()))
         return self.serialize_rentals(cur.fetchall(), True)
 
-    def query_stats_start_trip(self, zone_id, d_filter):
-        cur = self.conn.cursor()
+    def query_stats_start_trip(self, conn, zone_id, d_filter):
+        cur = conn.cursor()
         stmt = """WITH temp_a (filter_area) AS
             (SELECT st_union(area) 
 	            FROM zones WHERE zone_id = %s)
@@ -77,8 +76,8 @@ class Rentals():
             return result[0]
         return 0
 
-    def query_stats_end_trip(self, zone_id, d_filter):
-        cur = self.conn.cursor()
+    def query_stats_end_trip(self, conn, zone_id, d_filter):
+        cur = conn.cursor()
         stmt = """WITH temp_a (filter_area) AS
             (SELECT st_union(area) 
 	            FROM zones WHERE zone_id = %s)
@@ -100,21 +99,18 @@ class Rentals():
             return result[0]
         return 0
 
-        
-
-    def query_stats(self, zone_id, d_filter):
+    def query_stats(self, conn, zone_id, d_filter):
         result = {}
-        values = [self.query_stats_end_trip(zone_id, d_filter), self.query_stats_start_trip(zone_id, d_filter)]
+        values = [self.query_stats_end_trip(conn, zone_id, d_filter), self.query_stats_start_trip(conn, zone_id, d_filter)]
         result["zone_id"] = zone_id
         result["number_of_trips"] = values
-        result["zone"] = self.zones.get_zone(zone_id)
+        result["zone"] = self.zones.get_zone(conn, zone_id)
         return result
-        
     
-    def get_stats(self, d_filter):
+    def get_stats(self, conn, d_filter):
         records = []
         for zone_id in d_filter.get_zones():
-            result = self.query_stats(zone_id, d_filter)
+            result = self.query_stats(conn, zone_id, d_filter)
             records.append(result)
         return records
 

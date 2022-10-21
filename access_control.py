@@ -1,10 +1,7 @@
 import jwt
 
 class AccessControl():
-    def __init__(self, conn):
-        self.conn = conn
-    
-    def retrieve_acl_user(self, request):
+    def retrieve_acl_user(self, request, conn):
         if not request.headers.get('Authorization'):
             return None
         encoded_token = request.headers.get('Authorization')
@@ -14,15 +11,15 @@ class AccessControl():
         result = jwt.decode(encoded_token, verify=False)
 
         # Get ACL and return result
-        return self.query_acl(result["email"])
+        return self.query_acl(conn, result["email"])
 
-    def query_acl(self, email):
+    def query_acl(self, conn, email):
         stmt = """
         SELECT username, filter_municipality, filter_operator, is_admin, is_contact_person_municipality
         FROM acl
         WHERE username=%s;
         """
-        cur = self.conn.cursor()
+        cur = conn.cursor()
         cur.execute(stmt, (email,))
         if cur.rowcount < 1:
             return None
@@ -33,12 +30,12 @@ class AccessControl():
         acl_user.retrieve_operators(cur)
         return acl_user
 
-    def list_acl(self):
+    def list_acl(self, conn):
         stmt = """
         SELECT username, filter_municipality, filter_operator, is_admin, is_contact_person_municipality
         FROM acl;
         """
-        cur = self.conn.cursor()
+        cur = conn.cursor()
         cur.execute(stmt)
 
         users = []
@@ -46,8 +43,8 @@ class AccessControl():
             users.append(ACL(user[0], user[1], user[2], user[3], user[4]))
         return users
 
-    def delete_user_acl(self, email):
-        cur = self.conn.cursor()
+    def delete_user_acl(self, conn, email):
+        cur = conn.cursor()
         user_acl = self.query_acl(email)
         if not user_acl:
             return "User doesn't exists in ACL."
@@ -56,7 +53,7 @@ class AccessControl():
         user_acl.municipality_filters = set()
         user_acl.update_municipality(cur)
         user_acl.delete(cur)
-        self.conn.commit()
+        conn.commit()
 
 class ACL():
     def __init__(self, username, has_municipality_filter_enabled, 

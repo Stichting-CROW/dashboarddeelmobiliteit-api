@@ -78,10 +78,10 @@ class Trips():
             return data
         
     
-    def get_stats(self, d_filter):
+    def get_stats(self, conn, d_filter):
         records = []
         for zone_id in d_filter.get_zones():
-            result = self.query_stats(zone_id, d_filter)
+            result = self.query_stats(conn, zone_id, d_filter)
             records.append(result)
         return records
 

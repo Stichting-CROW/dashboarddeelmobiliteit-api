@@ -9,11 +9,10 @@ import access_control
 
 
 class AdminControl():
-    def __init__(self, conn):
+    def __init__(self):
         with open('schema/permission_schema.json') as json_file:  
             self.schema = json.load(json_file)
-        self.conn = conn
-        self.access_c = access_control.AccessControl(self.conn)
+        self.access_c = access_control.AccessControl()
 
     def validate(self, input):
         try:
@@ -21,7 +20,7 @@ class AdminControl():
         except ValidationError as e:
             return e.message
 
-    def update(self, input):
+    def update(self, conn, input):
         acl = access_control.ACL(
             input["username"],
             input["filter_municipality"],
@@ -34,15 +33,15 @@ class AdminControl():
         acl.operator_filters = set(input["operators"]) 
         acl.municipality_filters = set(input["municipalities"])
         
-        cur = self.conn.cursor()
+        cur = conn.cursor()
         acl.update(cur)
-        self.conn.commit()
+        conn.commit()
         return acl
 
     def random_string_generator(self, size=10, chars=string.ascii_lowercase + string.digits):
         return ''.join(random.choice(chars) for _ in range(size))
 
-    def create_user(self, input):
+    def create_user(self, conn, input):
         headers = {
             'Authorization': os.getenv("FUSIONAUTH_APIKEY"),
             'Content-Type': 'application/json'
@@ -70,11 +69,11 @@ class AdminControl():
             return None, ("Something went wrong during assigning role to user %s [%s]" % (r.content, r.status_code))
         response = self.create_response_user(response_user, create_user_data["user"]["password"], r.json())
 
-        self.create_init_acl(input)
+        self.create_init_acl(conn, input)
 
         return response, None
 
-    def create_init_acl(self, input):
+    def create_init_acl(self, conn, input):
         acl = access_control.ACL(
             input["email"].lower(),
             input["user_type"] == "municipality",
@@ -82,9 +81,9 @@ class AdminControl():
             input["user_type"] == "administer",
             False
         )
-        cur = self.conn.cursor()
+        cur = conn.cursor()
         acl.update(cur)
-        self.conn.commit()
+        conn.commit()
 
 
     def create_response_user(self, response_user, password, response_registration):
@@ -94,11 +93,11 @@ class AdminControl():
         res["roles"] = response_registration["registration"]["roles"]
         return res
 
-    def list_users(self):
-        users = self.access_c.list_acl()
+    def list_users(self, conn):
+        users = self.access_c.list_acl(conn)
         return users
 
-    def delete_user(self, email):
+    def delete_user(self, conn, email):
         res = self.access_c.delete_user_acl(email)
         if res:
             return res

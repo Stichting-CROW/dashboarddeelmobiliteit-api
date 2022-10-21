@@ -1,8 +1,5 @@
 class AggregatedStatsAvailability():
-    def __init__(self, conn):
-        self.conn = conn
-
-    def get_stats(self, d_filter, aggregation_level):
+    def get_stats(self, conn, d_filter, aggregation_level):
         stmt = """
         WITH 
             time_serie AS (
@@ -50,10 +47,10 @@ class AggregatedStatsAvailability():
             "filter_system_id": d_filter.has_operator_filter(),
             "system_ids": d_filter.get_operators()
         }
-        cur = self.conn.cursor()
+        cur = conn.cursor()
         cur.execute(stmt, params)
         rows = cur.fetchall()
-        self.conn.commit()
+        conn.commit()
         
         result = {}
         result["aggregation_level"] = aggregation_level
