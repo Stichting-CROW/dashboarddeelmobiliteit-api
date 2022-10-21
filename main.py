@@ -40,17 +40,21 @@ if "password" in os.environ:
 
 
 conn = psycopg2.connect(conn_str)
-cur = conn.cursor()
-tripAdapter = trips.Trips(conn)
-tripAdapterV2 = trips_v2.Trips(conn)
-zoneAdapter = zones.Zones(conn)
-rentalAdapter = rentals.Rentals(conn)
+
+pgpool = SimpleConnectionPool(minconn=1, 
+        maxconn=10, 
+        dsn=conn_str)
+
+tripAdapter = trips.Trips()
+tripAdapterV2 = trips_v2.Trips()
+zoneAdapter = zones.Zones()
+rentalAdapter = rentals.Rentals()
 defaultAccessControl = access_control.DefaultACL()
-accessControl = access_control.AccessControl(conn)
-adminControl = admin_user.AdminControl(conn)
-statsOvertime = stats_over_time.StatsOverTime(conn)
-statsAggregatedAvailability = stats_aggregated_availability.AggregatedStatsAvailability(conn)
-statsAggregatedRentals = stats_aggregated_rentals.AggregatedStatsRentals(conn)
+accessControl = access_control.AccessControl()
+adminControl = admin_user.AdminControl()
+statsOvertime = stats_over_time.StatsOverTime()
+statsAggregatedAvailability = stats_aggregated_availability.AggregatedStatsAvailability()
+statsAggregatedRentals = stats_aggregated_rentals.AggregatedStatsRentals()
 
 # Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
