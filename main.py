@@ -28,6 +28,7 @@ import audit_log
 import stats_active_users
 import stats_aggregated_availability
 import stats_aggregated_rentals
+import stats_v2.availability_stats as availability_stats
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
@@ -57,6 +58,7 @@ statsOvertime = stats_over_time.StatsOverTime()
 statsAggregatedAvailability = stats_aggregated_availability.AggregatedStatsAvailability()
 statsAggregatedRentals = stats_aggregated_rentals.AggregatedStatsRentals()
 parkEventsAdapter = park_events.ParkEvents()
+availabilityStatsAdapter = availability_stats.AvailabilityStats()
 
 # Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
@@ -685,6 +687,36 @@ def get_aggregated_available_vehicles_stats():
 
     result = {}
     result["available_vehicles_aggregated_stats"] = statsAggregatedAvailability.get_stats(conn, d_filter, aggregation_level)
+    return jsonify(result)
+
+@app.route("/stats_v2/availability_stats")
+@requires_auth
+def get_availability_stats():
+    conn = get_conn()
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    if not request.args.get("aggregation_level"):
+        raise InvalidUsage("No aggregation_level specified", status_code=400)
+    aggregation_level = request.args.get("aggregation_level")
+    if aggregation_level not in ("15m", "hour", "day", "week", "month"):
+        raise InvalidUsage("Invalid aggregation level, value should be 'day', 'week' or 'month'", status_code=400)
+
+    if not request.args.get("group_by"):
+        raise InvalidUsage("No group_by specified", status_code=400)
+    group_by = request.args.get("group_by")
+    if group_by not in ("operator", "modality"):
+        raise InvalidUsage("Invalid group_by, value should be 'operator' or 'modality'", status_code=400)
+
+    if not d_filter.get_start_time():
+        raise InvalidUsage("No start_time specified", status_code=400)
+    if not d_filter.get_end_time():
+        raise InvalidUsage("No end_time specified", status_code=400)
+
+    result = {}
+    result["availability_stats"] = availabilityStatsAdapter.get_availability_stats(conn, d_filter, aggregation_level, group_by)
     return jsonify(result)
 
 @app.route("/aggregated_stats/rentals")

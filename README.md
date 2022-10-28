@@ -23,6 +23,9 @@
 
 # How to run
 
+    export password=X
+    export ip=localhost
+
     source ENV/bin/activate
     ./start_dev.sh
 
