@@ -26,8 +26,20 @@
     export password=X
     export ip=localhost
 
+    source .env
     source ENV/bin/activate
     ./start_dev.sh
+
+# How to test API end points
+
+Use a tool like Postman.
+
+Example call:
+
+```
+curl --location --request GET 'http://localhost:5000/stats_v2/availability_stats?start_time=2019-04-04T00:01:00Z&end_time=2019-04-16T00:01:00Z&aggregation_level=15m&zone_ids=51748&group_by=modality' \
+--header 'Authorization: Bearer ey..eI'
+```
 
 # How to run migrations (importing database structure)
 

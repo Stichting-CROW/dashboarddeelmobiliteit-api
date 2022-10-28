@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request, g, abort, send_file, after_this_request, send_from_directory
+from flask_cors import CORS
 from functools import wraps
 
 from flask.json import JSONEncoder
@@ -103,6 +104,7 @@ def not_authorized(error_msg):
     return jsonify(data), 403
 
 app = Flask(__name__)
+cors = CORS(app, resources={r"/stats_v2/*": {"origins": "*"}}) # https://readthedocs.org/projects/flask-cors/downloads/pdf/latest/
 app.json_encoder = CustomJSONEncoder
 
 def get_conn():
@@ -129,45 +131,6 @@ def unauthorized(error):
     response = jsonify({'code': 401, 'message': 'You are not authorized (no token or invalid token is present).'})
     response.status_code = 401
     return response
-
-
-# @app.route("/cycles")
-# @requires_auth
-# def bike_locations():
-#     if not g.acl.is_admin():
-#         return not_authorized("This endpoint can only be used by administrators.")  
-
-#     if "sw_lng" in request.args and "sw_lat" in request.args and "ne_lng" in request.args and "ne_lat" in request.args:
-#         result = get_bicycles_within_bounding_box(
-#             request.args.get("sw_lng"),
-#             request.args.get("sw_lat"),
-#             request.args.get("ne_lng"),
-#             request.args.get("ne_lat"))
-#     elif request.args.get('gm_code'):
-#         result = get_bicycles_in_municipality(request.args.get('gm_code'))
-#     else:
-#         result = get_all_bicycles()
-
-#     output = {}
-#     output["bicycles"] = []
-#     for record in result:
-#         output["bicycles"].append(serialize_location(record))
-
-#     conn.commit()
-#     return jsonify(output)
-
-# def serialize_location(result):
-#     data = {}
-#     data["timestamp"] = result[0]
-#     data["bike_id"] = result[1]
-#     data["location"] = {}
-#     data["location"]["latitude"] = result[2] 
-#     data["location"]["longitude"] = result[3]
-#     data["system_id"] = result[4]
-#     data["is_check_in"] = result[5]
-#     data["is_check_out"] = result[6]
-#     return data
-
 
 def get_bicycles_within_bounding_box(sw_lng, sw_lat, ne_lng, ne_lat):
     conn = get_conn()
@@ -690,13 +653,13 @@ def get_aggregated_available_vehicles_stats():
     return jsonify(result)
 
 @app.route("/stats_v2/availability_stats")
-@requires_auth
+# @requires_auth
 def get_availability_stats():
     conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
-    authorized, error = g.acl.is_authorized(d_filter)
-    if not authorized:
-        return not_authorized(error)
+    # authorized, error = g.acl.is_authorized(d_filter)
+    # if not authorized:
+    #     return not_authorized(error)
 
     if not request.args.get("aggregation_level"):
         raise InvalidUsage("No aggregation_level specified", status_code=400)
