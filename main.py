@@ -1,5 +1,4 @@
 from flask import Flask, jsonify, request, g, abort, send_file, after_this_request, send_from_directory
-from flask_cors import CORS
 from functools import wraps
 
 from flask.json import JSONEncoder
@@ -41,12 +40,26 @@ if "ip" in os.environ:
 if "password" in os.environ:
     conn_str += " user=deelfietsdashboard password={}".format(os.environ['password'])
 
-
 # conn = psycopg2.connect(conn_str)
-
 pgpool = SimpleConnectionPool(minconn=1, 
         maxconn=10, 
         dsn=conn_str)
+
+
+conn_str_timescale_db = "dbname=dashboardeelmobiliteit-timescaledb"
+if os.getenv('DEV') == 'true':
+    conn_str_timescale_db = "dbname=deelfietsdashboard4"
+
+if "TIMESCALE_DB_HOST" in os.environ:
+    conn_str_timescale_db += " host={} ".format(os.environ['TIMESCALE_DB_HOST'])
+if "TIMESCALE_DB_USER" in os.environ:
+    conn_str_timescale_db += " user={}".format(os.environ['TIMESCALE_DB_USER'])
+if "TIMESCALE_DB_PASSWORD" in os.environ:
+    conn_str_timescale_db += " password={}".format(os.environ['TIMESCALE_DB_PASSWORD'])
+
+timescaledb_pgpool = SimpleConnectionPool(minconn=1, 
+        maxconn=10, 
+        dsn=conn_str_timescale_db)
 
 tripAdapter = trips.Trips()
 tripAdapterV2 = trips_v2.Trips()
@@ -104,7 +117,6 @@ def not_authorized(error_msg):
     return jsonify(data), 403
 
 app = Flask(__name__)
-cors = CORS(app, resources={r"/stats_v2/*": {"origins": "*"}}) # https://readthedocs.org/projects/flask-cors/downloads/pdf/latest/
 app.json_encoder = CustomJSONEncoder
 
 def get_conn():
@@ -112,12 +124,23 @@ def get_conn():
         g.db = pgpool.getconn()
     return g.db
 
+def get_timescaledb_conn():
+    if 'timescaledb' not in g:
+        g.timescaledb = timescaledb_pgpool.getconn()
+    return g.timescaledb
+
 @app.teardown_appcontext
 def close_db(e=None):
     db = g.pop('db', None)
 
     if db is not None:
         pgpool.putconn(db)
+
+    timescaledb = g.pop('timescaledb', None)
+
+    if timescaledb is not None:
+        timescaledb_pgpool.putconn(timescaledb)
+    
 
 @app.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
@@ -653,19 +676,19 @@ def get_aggregated_available_vehicles_stats():
     return jsonify(result)
 
 @app.route("/stats_v2/availability_stats")
-# @requires_auth
+@requires_auth
 def get_availability_stats():
-    conn = get_conn()
+    timescaledb_conn = get_timescaledb_conn()
     d_filter = data_filter.DataFilter.build(request.args)
-    # authorized, error = g.acl.is_authorized(d_filter)
-    # if not authorized:
-    #     return not_authorized(error)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
 
     if not request.args.get("aggregation_level"):
         raise InvalidUsage("No aggregation_level specified", status_code=400)
     aggregation_level = request.args.get("aggregation_level")
-    if aggregation_level not in ("15m", "hour", "day", "week", "month"):
-        raise InvalidUsage("Invalid aggregation level, value should be 'day', 'week' or 'month'", status_code=400)
+    if aggregation_level not in ("5m", "15m", "hour", "day", "week", "month"):
+        raise InvalidUsage("Invalid aggregation level, value should be '5m', '15m', 'hour', 'day', 'week' or 'month'", status_code=400)
 
     if not request.args.get("group_by"):
         raise InvalidUsage("No group_by specified", status_code=400)
@@ -679,13 +702,15 @@ def get_availability_stats():
         raise InvalidUsage("No end_time specified", status_code=400)
 
     result = {}
-    result["availability_stats"] = availabilityStatsAdapter.get_availability_stats(conn, d_filter, aggregation_level, group_by)
+    result["availability_stats"] = availabilityStatsAdapter.get_availability_stats(timescaledb_conn, d_filter, aggregation_level, group_by)
+    timescaledb_conn.commit()
     return jsonify(result)
 
 @app.route("/aggregated_stats/rentals")
 @requires_auth
 def get_aggregated_rental_stats():
     conn = get_conn()
+    timescaledb_conn = get_timescaledb_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
@@ -703,6 +728,6 @@ def get_aggregated_rental_stats():
         raise InvalidUsage("No end_time specified", status_code=400)
 
     result = {}
-    result["rentals_aggregated_stats"] = statsAggregatedRentals.get_stats(conn, d_filter, aggregation_level)
+    result["rentals_aggregated_stats"] = statsAggregatedRentals.get_stats(timescaledb_conn, d_filter, aggregation_level)
     conn.commit()
     return jsonify(result)

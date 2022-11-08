@@ -1,6 +1,7 @@
 class AvailabilityStats():
     def converted_aggregation_level(self, aggregation_level):
         allowed_aggregation_levels = {
+            '5m': '5 minutes',
             '15m': '15 minutes',
             'hour': '1 hour',
             'day': '1 day',
@@ -22,7 +23,7 @@ class AvailabilityStats():
             return self.get_availability_stats_per_operator(conn, d_filter, aggregation_level)
 
     def get_availability_stats_per_modality(self, conn, d_filter, aggregation_level):
-        agg_level = self.converted_aggregation_level(aggregation_level);
+        agg_level = self.converted_aggregation_level(aggregation_level)
 
         query = """
             SELECT
@@ -50,7 +51,7 @@ class AvailabilityStats():
         return result
 
     def get_availability_stats_per_operator(self, conn, d_filter, aggregation_level):
-        agg_level = self.converted_aggregation_level(aggregation_level);
+        agg_level = self.converted_aggregation_level(aggregation_level)
 
         query = """
             SELECT
@@ -60,7 +61,7 @@ class AvailabilityStats():
             FROM stats_number_of_vehicles_parked
             WHERE
                 time > NOW() - INTERVAL '2 days'
-                AND zone_id IN (%(zone_ids)s)
+                AND zone_id IN %(zone_ids)s
             GROUP BY bucket, system_id
             ORDER BY bucket ASC, system_id
         """
