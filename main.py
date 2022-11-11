@@ -710,7 +710,6 @@ def get_availability_stats():
 @requires_auth
 def get_aggregated_rental_stats():
     conn = get_conn()
-    timescaledb_conn = get_timescaledb_conn()
     d_filter = data_filter.DataFilter.build(request.args)
     authorized, error = g.acl.is_authorized(d_filter)
     if not authorized:
@@ -728,6 +727,6 @@ def get_aggregated_rental_stats():
         raise InvalidUsage("No end_time specified", status_code=400)
 
     result = {}
-    result["rentals_aggregated_stats"] = statsAggregatedRentals.get_stats(timescaledb_conn, d_filter, aggregation_level)
+    result["rentals_aggregated_stats"] = statsAggregatedRentals.get_stats(conn, d_filter, aggregation_level)
     conn.commit()
     return jsonify(result)
