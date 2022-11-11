@@ -1,3 +1,4 @@
+from decimal import Decimal
 from flask import Flask, jsonify, request, g, abort, send_file, after_this_request, send_from_directory
 from functools import wraps
 
@@ -32,8 +33,6 @@ import stats_v2.availability_stats as availability_stats
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
-if "dev" in os.environ:
-    conn_str = "dbname=deelfietsdashboard4"
 
 if "ip" in os.environ:
     conn_str += " host={} ".format(os.environ['ip'])
@@ -47,8 +46,8 @@ pgpool = SimpleConnectionPool(minconn=1,
 
 
 conn_str_timescale_db = "dbname=dashboardeelmobiliteit-timescaledb"
-if os.getenv('DEV') == 'true':
-    conn_str_timescale_db = "dbname=deelfietsdashboard4"
+# if os.getenv('DEV') == 'true':
+#     conn_str_timescale_db = "dbname=deelfietsdashboard4"
 
 if "TIMESCALE_DB_HOST" in os.environ:
     conn_str_timescale_db += " host={} ".format(os.environ['TIMESCALE_DB_HOST'])
@@ -56,6 +55,8 @@ if "TIMESCALE_DB_USER" in os.environ:
     conn_str_timescale_db += " user={}".format(os.environ['TIMESCALE_DB_USER'])
 if "TIMESCALE_DB_PASSWORD" in os.environ:
     conn_str_timescale_db += " password={}".format(os.environ['TIMESCALE_DB_PASSWORD'])
+if "TIMESCALE_DB_PORT" in os.environ:
+    conn_str_timescale_db += " port={}".format(os.environ['TIMESCALE_DB_PORT'])
 
 timescaledb_pgpool = SimpleConnectionPool(minconn=1, 
         maxconn=10, 
@@ -80,6 +81,8 @@ class CustomJSONEncoder(JSONEncoder):
         try:
             if isinstance(obj, date):
                 return obj.isoformat() + "Z"
+            if isinstance(obj, Decimal):
+                return float(obj)
             iterable = iter(obj)
         except TypeError:
             pass
@@ -688,7 +691,11 @@ def get_availability_stats():
         raise InvalidUsage("No aggregation_level specified", status_code=400)
     aggregation_level = request.args.get("aggregation_level")
     if aggregation_level not in ("5m", "15m", "hour", "day", "week", "month"):
-        raise InvalidUsage("Invalid aggregation level, value should be '5m', '15m', 'hour', 'day', 'week' or 'month'", status_code=400)
+        raise InvalidUsage("Invalid aggregation_level, value should be '5m', '15m', 'hour', 'day', 'week' or 'month'", status_code=400)
+
+    aggregation_function = request.args.get("aggregation_function")
+    if aggregation_function not in ("MIN", "MAX", "AVG"):
+        raise InvalidUsage("Invalid aggregation_function, value should be 'MIN', 'MAX' or 'AVG''", status_code=400)
 
     if not request.args.get("group_by"):
         raise InvalidUsage("No group_by specified", status_code=400)
@@ -702,7 +709,7 @@ def get_availability_stats():
         raise InvalidUsage("No end_time specified", status_code=400)
 
     result = {}
-    result["availability_stats"] = availabilityStatsAdapter.get_availability_stats(timescaledb_conn, d_filter, aggregation_level, group_by)
+    result["availability_stats"] = availabilityStatsAdapter.get_availability_stats(timescaledb_conn, d_filter, aggregation_level, group_by, aggregation_function)
     timescaledb_conn.commit()
     return jsonify(result)
 
