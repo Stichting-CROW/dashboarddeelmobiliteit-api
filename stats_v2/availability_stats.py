@@ -32,7 +32,7 @@ class AvailabilityStats():
         query = """
             SELECT
                 modality,
-                time_bucket(%(agg_level)s, time) AS bucket,
+                time_bucket_gapfill(%(agg_level)s, time) AS bucket,
                 {}(number_of_vehicles_parked) as amount
             FROM stats_number_of_vehicles_parked
             WHERE

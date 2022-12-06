@@ -30,6 +30,7 @@ import stats_active_users
 import stats_aggregated_availability
 import stats_aggregated_rentals
 import stats_v2.availability_stats as availability_stats
+import stats_v2.rental_stats as rental_stats
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
@@ -46,8 +47,8 @@ pgpool = SimpleConnectionPool(minconn=1,
 
 
 conn_str_timescale_db = "dbname=dashboardeelmobiliteit-timescaledb"
-# if os.getenv('DEV') == 'true':
-#     conn_str_timescale_db = "dbname=deelfietsdashboard4"
+if os.getenv('DEV') == 'true':
+    conn_str_timescale_db = "dbname=dashboardeelmobiliteit-timescaledb-dev"
 
 if "TIMESCALE_DB_HOST" in os.environ:
     conn_str_timescale_db += " host={} ".format(os.environ['TIMESCALE_DB_HOST'])
@@ -74,6 +75,7 @@ statsAggregatedAvailability = stats_aggregated_availability.AggregatedStatsAvail
 statsAggregatedRentals = stats_aggregated_rentals.AggregatedStatsRentals()
 parkEventsAdapter = park_events.ParkEvents()
 availabilityStatsAdapter = availability_stats.AvailabilityStats()
+rentalStatsAdapter = rental_stats.RentalStats()
 
 # Custom JSON serializer to output timestamps as ISO8601
 class CustomJSONEncoder(JSONEncoder):
@@ -710,6 +712,31 @@ def get_availability_stats():
 
     result = {}
     result["availability_stats"] = availabilityStatsAdapter.get_availability_stats(timescaledb_conn, d_filter, aggregation_level, group_by, aggregation_function)
+    timescaledb_conn.commit()
+    return jsonify(result)
+
+@app.route("/stats_v2/rental_stats")
+@requires_auth
+def get_rental_stats():
+    timescaledb_conn = get_timescaledb_conn()
+    d_filter = data_filter.DataFilter.build(request.args)
+    authorized, error = g.acl.is_authorized(d_filter)
+    if not authorized:
+        return not_authorized(error)
+
+    if not request.args.get("aggregation_level"):
+        raise InvalidUsage("No aggregation_level specified", status_code=400)
+    aggregation_level = request.args.get("aggregation_level")
+    if aggregation_level not in ("5m", "15m", "hour", "day", "week", "month"):
+        raise InvalidUsage("Invalid aggregation_level, value should be '5m', '15m', 'hour', 'day', 'week' or 'month'", status_code=400)
+
+    if not d_filter.get_start_time():
+        raise InvalidUsage("No start_time specified", status_code=400)
+    if not d_filter.get_end_time():
+        raise InvalidUsage("No end_time specified", status_code=400)
+
+    result = {}
+    result["rental_stats"] = rentalStatsAdapter.get_rental_stats(timescaledb_conn, d_filter, aggregation_level)
     timescaledb_conn.commit()
     return jsonify(result)
 
