@@ -19,7 +19,6 @@ import zones
 import park_events
 import data_filter
 import access_control
-import admin_user
 import stats_over_time
 import rentals
 import report.generate_xlsx
@@ -75,7 +74,6 @@ zoneAdapter = zones.Zones()
 rentalAdapter = rentals.Rentals()
 defaultAccessControl = access_control.DefaultACL()
 accessControl = access_control.AccessControl()
-adminControl = admin_user.AdminControl()
 statsOvertime = stats_over_time.StatsOverTime()
 statsAggregatedAvailability = stats_aggregated_availability.AggregatedStatsAvailability()
 statsAggregatedRentals = stats_aggregated_rentals.AggregatedStatsRentals()
@@ -550,96 +548,6 @@ def get_raw_data():
     with redis_helper.get_resource() as r:
         result = export_raw_data.create_export_task.schedule_export(r, d_filter, g.acl.username)
         return jsonify(result)
-    
-
-
-def get_raw_gbfs(feed):
-    conn = get_conn()
-    cur = conn.cursor()
-    stmt = """SELECT json
-        FROM raw_gbfs
-        WHERE
-        feed = %s
-        """
-    cur.execute(stmt, (feed,))
-    return cur.fetchone()[0]
-
-# This method should also be accesible without 
-@app.route("/gbfs")
-def get_gbfs():
-    data = {}
-    if request.args.get('feed'):
-        data = get_raw_gbfs(request.args.get('feed'))
-
-    return jsonify(data)
-
-@app.route("/admin/user/permission", methods=['GET'])
-@requires_auth
-def get_permission():
-    conn = get_conn()
-    if request.args.get("username") and not g.acl.is_admin:
-        return not_authorized("This user is not an administrator.")
-    if request.args.get("username"):
-        data = accessControl.query_acl(conn, request.args.get("username"))
-    else: 
-        # Default show login of user belonging to token.
-        data = g.acl
-    
-    return jsonify(data.serialize())
-
-@app.route("/admin/user/permission", methods=['PUT', 'POST'])
-@requires_auth
-def change_permission():
-    conn = get_conn()
-    if not g.acl.is_admin():
-        return not_authorized("This user is not an administrator.")
-
-    err = adminControl.validate(request.get_json())
-    if err:
-        raise InvalidUsage(err, status_code=400)
-    adminControl.update(conn, request.get_json())
-   
-    return jsonify(request.get_json())
-
-@app.route("/admin/user/create", methods=['PUT'])
-@requires_auth
-def create_user():
-    conn = get_conn()
-    if not g.acl.is_admin():
-        return not_authorized("This user is not an administrator.")
-
-    res, err = adminControl.create_user(conn, request.get_json())    
-    if not res:
-        raise InvalidUsage(err, status_code=400)
-
-    return jsonify(res)
-
-@app.route("/admin/user/list", methods=['GET'])
-@requires_auth
-def list_user():
-    conn = get_conn()
-    if not g.acl.is_admin():
-        return not_authorized("This user is not an administrator.")
-
-    res = map(lambda acl: acl.serialize(), adminControl.list_users(conn))
-
-    return jsonify(res)
-
-@app.route("/admin/user/delete", methods=['DELETE'])
-@requires_auth
-def delete_user():
-    conn = get_conn()
-    if not g.acl.is_admin():
-        return not_authorized("This user is not an administrator.")
-
-    username = request.args.get('username')
-    if not username:
-        raise InvalidUsage("Username should be specified as query paramter", username)
-    res = adminControl.delete_user(conn, username)
-    if res:
-        raise InvalidUsage(res, status_code=400)
-
-    return jsonify(res)
     
 
 # This endpoint returns the same as get_permission but add some human readable fields.
