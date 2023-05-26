@@ -23,7 +23,7 @@ import admin_user
 import stats_over_time
 import rentals
 import report.generate_xlsx
-import export_raw_data.export_to_zip
+import export_raw_data.create_export_task
 import public_zoning_stats
 import audit_log
 import stats_active_users
@@ -31,16 +31,22 @@ import stats_aggregated_availability
 import stats_aggregated_rentals
 import stats_v2.availability_stats as availability_stats
 import stats_v2.rental_stats as rental_stats
+from redis_helper import redis_helper
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
 
-if "ip" in os.environ:
-    conn_str += " host={} ".format(os.environ['ip'])
-if "password" in os.environ:
-    conn_str += " user=deelfietsdashboard password={}".format(os.environ['password'])
+if "DB_HOST" in os.environ:
+    conn_str += " host={} ".format(os.environ['DB_HOST'])
+if "DB_USER" in os.environ:
+    conn_str += " user={}".format(os.environ['DB_USER'])
+if "DB_PASSWORD" in os.environ:
+    conn_str += " password={}".format(os.environ['DB_PASSWORD'])
+if "DB_PORT" in os.environ:
+    conn_str += " port={}".format(os.environ['DB_PORT'])
 
 # conn = psycopg2.connect(conn_str)
+print(conn_str)
 pgpool = SimpleConnectionPool(minconn=1, 
         maxconn=10, 
         dsn=conn_str)
@@ -541,18 +547,10 @@ def get_raw_data():
         return not_authorized(error)
 
     audit_log.log_request(conn, g.acl.username, request.full_path, d_filter)
-    export_dir = export_raw_data.export_to_zip.generate_zip(conn, d_filter)
-    @after_this_request
-    def remove_file(response):
-        try:
-            shutil.rmtree(export_dir)
-        except OSError as e:
-            print("Error: %s : %s" % (export_dir, e.strerror))
-        return response
-    return send_from_directory(export_dir,
-        filename="export.zip",
-        attachment_filename="export_deelfietsdashboard.zip",
-        as_attachment=True)
+    with redis_helper.get_resource() as r:
+        result = export_raw_data.create_export_task.schedule_export(r, d_filter, g.acl.username)
+        return jsonify(result)
+    
 
 
 def get_raw_gbfs(feed):
