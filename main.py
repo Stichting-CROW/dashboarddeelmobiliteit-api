@@ -543,9 +543,9 @@ def get_raw_data():
         return not_authorized(error)
 
     # check if all authorizations are matched.
-    authorized, error = g.acl.is_authorized_for_raw_data(d_filter)
+    authorized = g.acl.is_authorized_for_raw_data()
     if not authorized:
-        return not_authorized(error)
+        return not_authorized("This user is not admin and doesn't have raw data rights.")
 
     audit_log.log_request(conn, g.acl.username, request.full_path, d_filter)
     with redis_helper.get_resource() as r:

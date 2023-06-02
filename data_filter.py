@@ -93,7 +93,7 @@ class DataFilter():
         return "unknown" in self.form_factors
 
     def add_filters_based_on_acl(self, acl):
-        if self.organisation_type == "ADMIN":
+        if acl.organisation_type == "ADMIN":
             return
         for operator_id in acl.operator_filters:
             self.add_operator(operator_id)
