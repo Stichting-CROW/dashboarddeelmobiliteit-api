@@ -50,7 +50,6 @@ pgpool = SimpleConnectionPool(minconn=1,
         maxconn=10, 
         dsn=conn_str)
 
-
 conn_str_timescale_db = "dbname=dashboardeelmobiliteit-timescaledb"
 if os.getenv('DEV') == 'true':
     conn_str_timescale_db = "dbname=dashboardeelmobiliteit-timescaledb-dev"
@@ -538,6 +537,10 @@ def get_raw_data():
     result = d_filter.add_filters_based_on_acl(g.acl)
     if result != None:
         return not_authorized(result) 
+    
+    authorized_acl, error = g.acl.is_authorized(d_filter)
+    if not authorized_acl:
+        return not_authorized(error)
 
     # check if all authorizations are matched.
     authorized, error = g.acl.is_authorized_for_raw_data(d_filter)

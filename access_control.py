@@ -22,10 +22,12 @@ class AccessControl():
         """
         cur = conn.cursor()
         cur.execute(stmt, (email,))
+        print(email)
         if cur.rowcount < 1:
             return None
         
         user = cur.fetchone()
+        print(user)
         acl_user = ACL(user[0], user[1], user[2], user[3])
         acl_user.retrieve_municipalities(cur)
         acl_user.retrieve_operators(cur)
@@ -45,7 +47,7 @@ class ACL():
         self.default_acl = DefaultACL()
 
     def check_municipality_code(self, municipality_code):
-        if not self.has_municipality_filter():
+        if len(self.municipality_filters) == 0:
             return True, None
 
         if municipality_code in self.municipality_filters:
@@ -94,6 +96,9 @@ class ACL():
             return False, error
 
         return True, None
+    
+    def is_authorized_for_raw_data(self):
+        return self.organisation_type == "ADMIN" or "DOWNLOAD_RAW_DATA" in self.privileges 
 
     # Retrieve the municipalities to filter on.
     def retrieve_municipalities(self, cur):
