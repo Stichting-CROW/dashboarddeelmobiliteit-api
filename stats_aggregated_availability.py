@@ -6,20 +6,23 @@ class AggregatedStatsAvailability():
                 SELECT generate_series(%(start_date)s::date, %(end_date)s::date, '1d')::date AS stat_dates
             ),
             stats AS (
-            SELECT system_id, DATE_TRUNC(%(aggregation)s, stat_dates) as time_period, ROUND(AVG(value)) as value
-            FROM (
-                SELECT * FROM time_serie
-            ) as t
-            LEFT JOIN stats_pre_process ON stat_dates = date
-            JOIN zones
-            ON stats_pre_process.zone_ref = zones.stats_ref
-            WHERE 
-            date >= %(start_date)s AND date <= %(end_date)s
-            AND (false = %(filter_zone_id)s or zone_id IN %(zone_ids)s)
-            AND (false = %(filter_system_id)s or system_id IN %(system_ids)s)
-            AND stat_description = 'number_of_vehicles_available'
-            GROUP BY DATE_TRUNC(%(aggregation)s, stat_dates), system_id
-            ORDER BY time_period
+                SELECT system_id, DATE_TRUNC(%(aggregation)s, q1.time_period) as time_period, ROUND(AVG(q1.value)) as value
+                FROM (
+                    SELECT system_id, DATE_TRUNC('day', stat_dates) as time_period, SUM(value) as value
+                    FROM (
+                        SELECT * FROM time_serie
+                    ) as t
+                    LEFT JOIN stats_pre_process ON stat_dates = date
+                    JOIN zones
+                    ON stats_pre_process.zone_ref = zones.stats_ref
+                    WHERE 
+                    date >= %(start_date)s AND date <= %(end_date)s
+                    AND (false = %(filter_zone_id)s or zone_id IN %(zone_ids)s)
+                    AND (false = %(filter_system_id)s or system_id IN %(system_ids)s)
+                    AND stat_description = 'number_of_vehicles_available'
+                    GROUP BY DATE_TRUNC('day', stat_dates), system_id
+                ) as q1
+                GROUP BY DATE_TRUNC(%(aggregation)s, time_period), system_id
             ), 
             periods AS (
                 SELECT DISTINCT(DATE_TRUNC(%(aggregation)s, stat_dates)) as time_period
