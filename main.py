@@ -293,7 +293,6 @@ def get_trips_destinations():
     
     result = {}
     result["trip_destinations"] = tripAdapterV2.get_trip_destinations(conn, d_filter)
-    print(time.time())
     conn.commit()
     return jsonify(result)
 
