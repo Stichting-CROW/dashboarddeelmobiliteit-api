@@ -2,16 +2,24 @@ import jwt
 
 class AccessControl():
     def retrieve_acl_user(self, request, conn):
-        if not request.headers.get('Authorization'):
+        user_id = None
+        consumer_username = request.headers.get("X-Consumer-Username")
+        if request.headers.get('Authorization'):
+            user_id = self.get_user_id_jwt(request.headers.get('Authorization'))
+        elif consumer_username and consumer_username != "anonymous":
+            user_id = consumer_username
+        if not user_id:
             return None
-        encoded_token = request.headers.get('Authorization')
+
+        # Get ACL and return result
+        return self.query_acl(conn, user_id)
+    
+    def get_user_id_jwt(self, encoded_token):
         encoded_token = encoded_token.split(" ")[1]
         # Verification is performed by kong (reverse proxy), 
         # therefore token is not verified for a second time so that the secret is only stored there.
         result = jwt.decode(encoded_token, verify=False)
-
-        # Get ACL and return result
-        return self.query_acl(conn, result["email"])
+        return result["email"]
 
     def query_acl(self, conn, email):
         stmt = """

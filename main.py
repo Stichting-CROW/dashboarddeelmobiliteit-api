@@ -673,3 +673,4 @@ def get_aggregated_rental_stats():
     result["rentals_aggregated_stats"] = statsAggregatedRentals.get_stats(conn, d_filter, aggregation_level)
     conn.commit()
     return jsonify(result)
+
