@@ -10,6 +10,7 @@ class DataFilter():
         self.start_time = None
         self.end_time = None
         self.gm_code = None
+        self.latlng = []
         self.form_factors = []
 
     def add_zones(self, args):
@@ -91,6 +92,12 @@ class DataFilter():
 
     def include_unknown_form_factors(self):
         return "unknown" in self.form_factors
+
+    def get_latlng(self):
+        return self.latlng
+
+    def has_latlng(self):
+        return len(self.latlng) === 2
 
     def add_filters_based_on_acl(self, acl):
         if acl.has_operator_filter():
