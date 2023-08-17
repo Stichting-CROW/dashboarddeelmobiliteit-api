@@ -427,6 +427,22 @@ def get_filters():
         result["filter_values"]["zones"] = zoneAdapter.list_zones(conn, d_filter, include_custom_zones=False)
     return jsonify(result)
 
+@app.route("/public/get_municipality_based_on_latlng", methods=['GET'])
+def get_municipality_based_on_latlng():
+    conn = get_conn()
+    location = request.args.get("location")
+    if not location:
+        raise InvalidUsage("No location specified", status_code=400)
+    location_split = location.split(",")
+    if len(location_split) != 2:
+        raise InvalidUsage("Location not correctly formatted, '52.0,5.0' is expected", status_code=400)
+    lat = location_split[0]
+    lng = location_split[1]
+    
+    res = zoneAdapter.get_municipality_based_on_latlng(conn, lat, lng)
+    if res == None:
+        raise InvalidUsage("No municipality found for these coordinates", status_code=404)
+    return jsonify(res)
 
 @app.route("/park_events", methods=['GET'])
 @requires_auth
