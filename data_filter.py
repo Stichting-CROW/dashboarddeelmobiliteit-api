@@ -12,6 +12,7 @@ class DataFilter():
         self.gm_code = None
         self.latlng = []
         self.form_factors = []
+        self.geojson = {}
 
     def add_zones(self, args):
         if args.get("zone_ids"):
@@ -98,6 +99,12 @@ class DataFilter():
 
     def has_latlng(self):
         return len(self.latlng) === 2
+
+    def get_geojson(self):
+        return self.geojson
+
+    def has_geojson(self):
+        return self.geojson;
 
     def add_filters_based_on_acl(self, acl):
         if acl.has_operator_filter():

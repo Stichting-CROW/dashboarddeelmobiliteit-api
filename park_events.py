@@ -91,9 +91,6 @@ class ParkEvents():
             result[record[0]] = int(record[1])
         return result
 
-
-
-
     def get_stats(self, conn, d_filter):
         records = []
         for zone_id in d_filter.get_zones():
@@ -197,7 +194,6 @@ class ParkEvents():
             result_zones.append(self.serialize_park_event_stat(zone))
         return result_zones
 
-
     def serialize_park_event_stat(self, zone):
         data = {}
         data["zone_id"] = zone[0]
@@ -218,3 +214,66 @@ class ParkEvents():
                 data.append(0)
         return data
 
+    # parkeertelling :: Do a parkeertelling
+    #
+    # Example input:
+    # 
+    # "name": "Arnhem Ketelstraat oneven zijde",
+    # "timestamp": "2022-10-24T00:00:00",
+    # "geojson": {
+    #   "type": "Polygon", 
+    #   "coordinates":  [
+    #     [
+    #       [5.90802,51.98173],
+    #       [5.90808,51.98171],
+    #       [5.90924,51.98199],
+    #       [5.90921,51.98202],
+    #       [5.90802,51.98173]
+    #     ]
+    #   ]
+    # }
+    #
+    # Example cURL call:
+    # curl -XPOST -H "Content-type: application/json" -d '{ 
+    # "timestamp": "2022-10-24T00:00:00",
+    # "geojson": {
+    #   "type": "Polygon", 
+    #   "coordinates":  [
+    #     [
+    #       [5.90802,51.98173],
+    #       [5.90808,51.98171],
+    #       [5.90924,51.98199],
+    #       [5.90921,51.98202],
+    #       [5.90802,51.98173]
+    #     ]
+    #   ]
+    # }' 'https://api.deelfietsdashboard.nl/dashboard-api/parkeertelling'
+    #
+    def parkeertelling(self, conn, d_filter):
+        conn = get_conn()
+        cur = conn.cursor()
+
+        stmt = """SELECT
+                form_factor,
+                COUNT(bike_id) as number_of_parked_vehicles
+            FROM park_events
+            
+            LEFT JOIN vehicle_type 
+            ON park_events.vehicle_type_id = vehicle_type.vehicle_type_id
+            
+            WHERE   start_time < %s 
+                AND (end_time > %s OR end_time is null)
+                AND ST_WITHIN(
+                    location,
+                    %s
+                )
+            GROUP BY form_factor;
+        """
+
+        cur.execute(stmt, (
+            d_filter.get_timestamp(),# Start time
+            d_filter.get_timestamp(),# End time
+            d_filter.get_geojson()   # GeoJSON area to search in
+        ));
+
+        return cur.fetchall()

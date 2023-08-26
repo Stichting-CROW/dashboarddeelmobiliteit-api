@@ -771,3 +771,12 @@ def get_aggregated_rental_stats():
     result["rentals_aggregated_stats"] = statsAggregatedRentals.get_stats(conn, d_filter, aggregation_level)
     conn.commit()
     return jsonify(result)
+
+@app.route("/parkeertelling", methods=['GET'])
+@requires_auth
+def get_park_events():
+    conn = get_conn()
+    d_filter = data_filter.DataFilter.build(request.args)
+    result = parkEventsAdapter.parkeertelling(conn, d_filter)
+    conn.commit()
+    return jsonify(result)
