@@ -2,15 +2,17 @@
 
 - Install Python 3.9:
 
-    sudo apt-get install python3.9 python3.9-dev python3.9-venv
+    https://realpython.com/intro-to-pyenv/
+    pyenv local 3.9.18
+    pyenv global 3.9.18
 
 - Create an Python environment:
 
-    python3.9 -m venv ENV
+   pyenv virtualenv 3.9.18 ENV
 
 - Go into this environment:
 
-    source ENV/bin/activate
+    pyenv local ENV
 
 - Install some other things:
 
@@ -20,6 +22,11 @@
 - Install dependencies:
 
     pip install -r requirements.txt
+    pip install python-dotenv
+
+- Start port forwarding for postgresql:
+
+    ssh root@167.99.219.233 -L 5431:10.133.75.95:5432
 
 # How to run
 
@@ -73,3 +80,8 @@ Related query:
 ## Importing database tables
 
     psql -h localhost -U deelfietsdashboard -d deelfietsdashboard -f ~/tmp/FILE.sql
+
+## Proxy to production database (PostSQL + TimescaleDB)
+
+    ssh -L 5434:10.133.137.239:5432 root@164.92.222.16
+    ssh -L 5431:10.133.75.95:5432 root@auth.deelfietsdashboard.nl
