@@ -112,7 +112,7 @@ class AvailabilityStats():
                     result.append(time_values)
                 # Start collecting data for this time
                 time_values = {
-                    'time': time,
+                    'time': time.replace(tzinfo=None),
                     name: count
                 }
                 lastProcessedTime = time

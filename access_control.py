@@ -2,67 +2,52 @@ import jwt
 
 class AccessControl():
     def retrieve_acl_user(self, request, conn):
-        if not request.headers.get('Authorization'):
+        user_id = None
+        consumer_username = request.headers.get("X-Consumer-Username")
+        if request.headers.get('Authorization'):
+            user_id = self.get_user_id_jwt(request.headers.get('Authorization'))
+        elif consumer_username and consumer_username != "anonymous":
+            user_id = consumer_username
+        if not user_id:
             return None
-        encoded_token = request.headers.get('Authorization')
+
+        # Get ACL and return result
+        return self.query_acl(conn, user_id)
+    
+    def get_user_id_jwt(self, encoded_token):
         encoded_token = encoded_token.split(" ")[1]
         # Verification is performed by kong (reverse proxy), 
         # therefore token is not verified for a second time so that the secret is only stored there.
         result = jwt.decode(encoded_token, verify=False)
-
-        # Get ACL and return result
-        return self.query_acl(conn, result["email"])
+        return result["email"]
 
     def query_acl(self, conn, email):
         stmt = """
-        SELECT username, filter_municipality, filter_operator, is_admin, is_contact_person_municipality
-        FROM acl
-        WHERE username=%s;
+        SELECT user_id, organisation_id, type_of_organisation, privileges                                                    
+        FROM user_account 
+        JOIN organisation USING (organisation_id) 
+        WHERE user_id = %s;
         """
         cur = conn.cursor()
         cur.execute(stmt, (email,))
+        print(email)
         if cur.rowcount < 1:
             return None
         
         user = cur.fetchone()
-        acl_user = ACL(user[0], user[1], user[2], user[3], user[4])
+        print(user)
+        acl_user = ACL(user[0], user[1], user[2], user[3])
         acl_user.retrieve_municipalities(cur)
         acl_user.retrieve_operators(cur)
         return acl_user
 
-    def list_acl(self, conn):
-        stmt = """
-        SELECT username, filter_municipality, filter_operator, is_admin, is_contact_person_municipality
-        FROM acl;
-        """
-        cur = conn.cursor()
-        cur.execute(stmt)
-
-        users = []
-        for user in cur.fetchall():
-            users.append(ACL(user[0], user[1], user[2], user[3], user[4]))
-        return users
-
-    def delete_user_acl(self, conn, email):
-        cur = conn.cursor()
-        user_acl = self.query_acl(email)
-        if not user_acl:
-            return "User doesn't exists in ACL."
-        user_acl.operator_filters = set()
-        user_acl.update_operator(cur)
-        user_acl.municipality_filters = set()
-        user_acl.update_municipality(cur)
-        user_acl.delete(cur)
-        conn.commit()
 
 class ACL():
-    def __init__(self, username, has_municipality_filter_enabled, 
-            has_operator_filter_enabled, is_administrator, is_contact_person_municipality):
+    def __init__(self, username, organisation_id, organisation_type, privileges):
         self.username = username
-        self.has_municipality_filter_enabled = has_municipality_filter_enabled
-        self.has_operator_filter_enabled = has_operator_filter_enabled
-        self.is_administrator = is_administrator
-        self.is_contact_person_municipality = is_contact_person_municipality
+        self.organisation_id = organisation_id
+        self.organisation_type = organisation_type
+        self.privileges = privileges
         self.operator_filters = set()
         self.municipality_filters = set()
         self.hr_municipality_filters = []
@@ -70,7 +55,7 @@ class ACL():
         self.default_acl = DefaultACL()
 
     def check_municipality_code(self, municipality_code):
-        if not self.has_municipality_filter():
+        if len(self.municipality_filters) == 0:
             return True, None
 
         if municipality_code in self.municipality_filters:
@@ -80,7 +65,7 @@ class ACL():
 
     # This function returns true when user has right to access.
     def check_municipalities(self, d_filter):
-        if not self.has_municipality_filter():
+        if len(self.municipality_filters) == 0:
             return True, None
 
         if not d_filter.has_zone_filter():
@@ -94,7 +79,7 @@ class ACL():
 
     # This function returns true when user has right to access.
     def check_operators(self, d_filter):
-        if not self.has_operator_filter():
+        if len(self.operator_filters) == 0:
             return True, None
 
         if not d_filter.has_operator_filter():
@@ -107,6 +92,9 @@ class ACL():
         return True, None
 
     def is_authorized(self, d_filter):
+        if self.organisation_type != "ADMIN" and len(self.operator_filters) == 0 and len(self.municipality_filters) == 0:
+            return False, "There should be at least a filter on municipalities or operators."
+
         is_authorized, error = self.check_municipalities(d_filter)
         if not is_authorized:
             return False, error
@@ -116,31 +104,31 @@ class ACL():
             return False, error
 
         return True, None
-
-    def is_authorized_for_raw_data(self, d_filter):
-        if self.has_municipality_filter() and not self.is_contact_person_municipality:
-            return False, "User is part of a municipality but doesn't have the contact person permission."
-        return self.is_authorized(d_filter)
-
-    def has_operator_filter(self):
-        return self.has_operator_filter_enabled
-
-    def has_municipality_filter(self):
-        return self.has_municipality_filter_enabled
-
-    def is_admin(self):
-        return self.is_administrator
+    
+    def is_authorized_for_raw_data(self):
+        return self.organisation_type == "ADMIN" or "DOWNLOAD_RAW_DATA" in self.privileges 
 
     # Retrieve the municipalities to filter on.
     def retrieve_municipalities(self, cur):
-        if not self.has_municipality_filter():
-            return
-        stmt = """SELECT acl_municipalities.municipality, name
-            FROM acl_municipalities
-            LEFT JOIN zones
-            ON acl_municipalities.municipality = zones.municipality
-            WHERE username = %s and zones.zone_type = 'municipality'"""
-        cur.execute(stmt, (self.username,))
+        stmt = """
+        SELECT municipality, name
+        FROM
+            (SELECT UNNEST(data_owner_of_municipalities) as municipalities
+            FROM organisation
+            WHERE organisation_id IN(
+                SELECT DISTINCT(owner_organisation_id) 
+                FROM view_data_access 
+                WHERE granted_organisation_id = %(organisation_id)s
+                OR granted_user = %(user_id)s
+            )
+            OR organisation_id = %(organisation_id)s) as q1
+        LEFT JOIN zones
+        ON q1.municipalities = zones.municipality
+        WHERE zones.zone_type = 'municipality';"""
+        cur.execute(stmt, {
+            "user_id": self.username, 
+            "organisation_id": self.organisation_id
+        })
         results = cur.fetchall()
         for item in results:
             self.municipality_filters.add(item[0])
@@ -159,73 +147,32 @@ class ACL():
             
     # Retrieve the operators to filter on.
     def retrieve_operators(self, cur):
-        if not self.has_operator_filter():
-            return
-        stmt = """SELECT operator
-            FROM acl_operator
-            WHERE username = %s"""
-        cur.execute(stmt, (self.username,))
+        stmt = """SELECT UNNEST(data_owner_of_operators) as operators
+            FROM organisation
+            WHERE organisation_id IN(
+                SELECT DISTINCT(owner_organisation_id) 
+                FROM view_data_access 
+                WHERE granted_organisation_id = %(organisation_id)s
+                OR granted_user = %(user_id)s
+            )
+            OR organisation_id = %(organisation_id)s;"""
+        cur.execute(stmt, {
+            "user_id": self.username, 
+            "organisation_id": self.organisation_id
+        })
         results = cur.fetchall()
         for item in results:
             self.operator_filters.add(item[0])
 
-    def update(self, cur):
-        stmt = """
-            INSERT INTO acl (username, filter_municipality, 
-                filter_operator, is_admin, is_contact_person_municipality)
-            VALUES
-            (%s, %s, %s, %s, %s) 
-            ON CONFLICT (username) 
-            DO
-            UPDATE
-            SET username = EXCLUDED.username,
-            filter_municipality = EXCLUDED.filter_municipality,
-            filter_operator = EXCLUDED.filter_operator,
-            is_admin = EXCLUDED.is_admin,
-            is_contact_person_municipality = EXCLUDED.is_contact_person_municipality
-            """
-        cur.execute(stmt, (self.username, self.has_municipality_filter(),
-            self.has_operator_filter(), self.is_admin(), self.is_contact_person_municipality))
-        self.update_municipality(cur)
-        self.update_operator(cur)
-
-
-    def update_municipality(self, cur):
-        stmt = """DELETE FROM acl_municipalities 
-            WHERE username = %s"""
-        cur.execute(stmt, (self.username,))
-        
-        stmt2 = """INSERT INTO acl_municipalities
-            (username, municipality)
-            VALUES (%s, %s)"""
-
-        for municipality in self.municipality_filters:
-            cur.execute(stmt2, (self.username, municipality))
-
-    def update_operator(self, cur):
-        stmt = """DELETE FROM acl_operator
-            WHERE username = %s"""
-        cur.execute(stmt, (self.username,))
-
-        stmt2 = """INSERT INTO acl_operator
-            (username, operator)
-            VALUES (%s, %s)"""
-
-        for operator in self.operator_filters:
-            cur.execute(stmt2, (self.username, operator))
-
-    def delete(self, cur):
-        stmt = """DELETE FROM acl
-            WHERE username = %s"""
-        cur.execute(stmt, (self.username,))
-
     def serialize(self):
         data = {}
         data["username"] = self.username
-        data["is_admin"] = self.is_admin()
-        data["filter_municipality"] = self.has_municipality_filter_enabled
-        data["filter_operator"] = self.has_operator_filter_enabled
-        data["is_contact_person_municipality"] = self.is_contact_person_municipality
+        data["organisation_type"] = self.organisation_type
+        data["privileges"] = self.privileges
+        data["is_admin"] = self.organisation_type == "ADMIN"
+        data["filter_municipality"] = False # self.has_municipality_filter_enabled
+        data["filter_operator"] = False # self.has_operator_filter_enabled
+        data["is_contact_person_municipality"] = "ORGANISATION_ADMIN" in self.privileges
         data["municipalities"] = self.municipality_filters
         data["operators"] = self.operator_filters
         return data 
@@ -234,14 +181,14 @@ class ACL():
         data = self.serialize()
         
         municipalities = []
-        if self.has_municipality_filter():
+        if len(self.municipality_filters) > 0 and len(self.operator_filters) == 0:
             municipalities = self.hr_municipality_filters
         else: 
             municipalities = self.default_acl.default_municipalities(cur)
         data["municipalities"] = municipalities
 
         operators = []
-        if self.has_operator_filter():
+        if len(self.operator_filters) > 0 and len(self.municipality_filters) == 0:
             for operator in self.operator_filters:
                 operators.append({"system_id": operator, "name": operator.capitalize()})
         else:
@@ -289,7 +236,6 @@ class DefaultACL:
         operators.append({"system_id": "bird", "name": "Bird"})
         operators.append({"system_id": "bolt", "name": "Bolt"})
         operators.append({"system_id": "bondi", "name": "bondi"})
-        operators.append({"system_id": "baqme2", "name": "baqme (acceptatie feed)"})
         operators.append({"system_id": "moveyou", "name": "MoveYou"})
         return operators
 

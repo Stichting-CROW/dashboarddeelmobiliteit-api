@@ -100,12 +100,25 @@ class Zones():
         cur.execute(stmt, (json.dumps(zone_data.get("geojson")), zone_data.get("municipality")))
         return cur.fetchone()[0]
 
+    def get_municipality_based_on_latlng(self, conn, latitude, longitude):
+        stmt = """
+            SELECT zone_id, name, owner, municipality, zone_type
+            FROM zones 
+            WHERE zone_type = 'municipality' 
+            AND ST_Intersects(zones.area, ST_SetSRID(ST_POINT(%s, %s), 4326));
+        """
+        cur = conn.cursor()
+        cur.execute(stmt, (longitude, latitude))
+        res = cur.fetchone()
+        if res:
+            return self.serialize_zone(res)
+
     def serialize_zones(self, zones):
         result = []
         for zone in zones:
             result.append(self.serialize_zone(zone))
         return result
-        
+
     def serialize_zone(self, zone):
         data = {}
         data["zone_id"] = zone[0]

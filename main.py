@@ -19,11 +19,10 @@ import zones
 import park_events
 import data_filter
 import access_control
-import admin_user
 import stats_over_time
 import rentals
 import report.generate_xlsx
-import export_raw_data.export_to_zip
+import export_raw_data.create_export_task
 import public_zoning_stats
 import audit_log
 import stats_active_users
@@ -31,24 +30,25 @@ import stats_aggregated_availability
 import stats_aggregated_rentals
 import stats_v2.availability_stats as availability_stats
 import stats_v2.rental_stats as rental_stats
+from redis_helper import redis_helper
 
 # Initialisation
 conn_str = "dbname=deelfietsdashboard"
 
-if "ip" in os.environ:
-    conn_str += " host={} ".format(os.environ['ip'])
-if "password" in os.environ:
-    conn_str += " user=deelfietsdashboard password={}".format(os.environ['password'])
 if "DB_HOST" in os.environ:
     conn_str += " host={} ".format(os.environ['DB_HOST'])
+if "DB_USER" in os.environ:
+    conn_str += " user={}".format(os.environ['DB_USER'])
+if "DB_PASSWORD" in os.environ:
+    conn_str += " password={}".format(os.environ['DB_PASSWORD'])
 if "DB_PORT" in os.environ:
-    conn_str += " port={} ".format(os.environ['DB_PORT'])
+    conn_str += " port={}".format(os.environ['DB_PORT'])
 
 # conn = psycopg2.connect(conn_str)
+print(conn_str)
 pgpool = SimpleConnectionPool(minconn=1, 
         maxconn=10, 
         dsn=conn_str)
-
 
 conn_str_timescale_db = "dbname=dashboardeelmobiliteit-timescaledb"
 if os.getenv('DEV') == 'true':
@@ -73,7 +73,6 @@ zoneAdapter = zones.Zones()
 rentalAdapter = rentals.Rentals()
 defaultAccessControl = access_control.DefaultACL()
 accessControl = access_control.AccessControl()
-adminControl = admin_user.AdminControl()
 statsOvertime = stats_over_time.StatsOverTime()
 statsAggregatedAvailability = stats_aggregated_availability.AggregatedStatsAvailability()
 statsAggregatedRentals = stats_aggregated_rentals.AggregatedStatsRentals()
@@ -294,7 +293,6 @@ def get_trips_destinations():
     
     result = {}
     result["trip_destinations"] = tripAdapterV2.get_trip_destinations(conn, d_filter)
-    print(time.time())
     conn.commit()
     return jsonify(result)
 
@@ -436,6 +434,22 @@ def get_filters():
         result["filter_values"]["zones"] = zoneAdapter.list_zones(conn, d_filter, include_custom_zones=False)
     return jsonify(result)
 
+@app.route("/public/get_municipality_based_on_latlng", methods=['GET'])
+def get_municipality_based_on_latlng():
+    conn = get_conn()
+    location = request.args.get("location")
+    if not location:
+        raise InvalidUsage("No location specified", status_code=400)
+    location_split = location.split(",")
+    if len(location_split) != 2:
+        raise InvalidUsage("Location not correctly formatted, '52.0,5.0' is expected", status_code=400)
+    lat = location_split[0]
+    lng = location_split[1]
+    
+    res = zoneAdapter.get_municipality_based_on_latlng(conn, lat, lng)
+    if res == None:
+        raise InvalidUsage("No municipality found for these coordinates", status_code=404)
+    return jsonify(res)
 
 @app.route("/park_events", methods=['GET'])
 @requires_auth
@@ -545,114 +559,20 @@ def get_raw_data():
     result = d_filter.add_filters_based_on_acl(g.acl)
     if result != None:
         return not_authorized(result) 
-
-    # check if all authorizations are matched.
-    authorized, error = g.acl.is_authorized_for_raw_data(d_filter)
-    if not authorized:
+    
+    authorized_acl, error = g.acl.is_authorized(d_filter)
+    if not authorized_acl:
         return not_authorized(error)
 
+    # check if all authorizations are matched.
+    authorized = g.acl.is_authorized_for_raw_data()
+    if not authorized:
+        return not_authorized("This user is not admin and doesn't have raw data rights.")
+
     audit_log.log_request(conn, g.acl.username, request.full_path, d_filter)
-    export_dir = export_raw_data.export_to_zip.generate_zip(conn, d_filter)
-    @after_this_request
-    def remove_file(response):
-        try:
-            shutil.rmtree(export_dir)
-        except OSError as e:
-            print("Error: %s : %s" % (export_dir, e.strerror))
-        return response
-    return send_from_directory(export_dir,
-        filename="export.zip",
-        attachment_filename="export_deelfietsdashboard.zip",
-        as_attachment=True)
-
-
-def get_raw_gbfs(feed):
-    conn = get_conn()
-    cur = conn.cursor()
-    stmt = """SELECT json
-        FROM raw_gbfs
-        WHERE
-        feed = %s
-        """
-    cur.execute(stmt, (feed,))
-    return cur.fetchone()[0]
-
-# This method should also be accesible without 
-@app.route("/gbfs")
-def get_gbfs():
-    data = {}
-    if request.args.get('feed'):
-        data = get_raw_gbfs(request.args.get('feed'))
-
-    return jsonify(data)
-
-@app.route("/admin/user/permission", methods=['GET'])
-@requires_auth
-def get_permission():
-    conn = get_conn()
-    if request.args.get("username") and not g.acl.is_admin:
-        return not_authorized("This user is not an administrator.")
-    if request.args.get("username"):
-        data = accessControl.query_acl(conn, request.args.get("username"))
-    else: 
-        # Default show login of user belonging to token.
-        data = g.acl
-    
-    return jsonify(data.serialize())
-
-@app.route("/admin/user/permission", methods=['PUT', 'POST'])
-@requires_auth
-def change_permission():
-    conn = get_conn()
-    if not g.acl.is_admin():
-        return not_authorized("This user is not an administrator.")
-
-    err = adminControl.validate(request.get_json())
-    if err:
-        raise InvalidUsage(err, status_code=400)
-    adminControl.update(conn, request.get_json())
-   
-    return jsonify(request.get_json())
-
-@app.route("/admin/user/create", methods=['PUT'])
-@requires_auth
-def create_user():
-    conn = get_conn()
-    if not g.acl.is_admin():
-        return not_authorized("This user is not an administrator.")
-
-    res, err = adminControl.create_user(conn, request.get_json())    
-    if not res:
-        raise InvalidUsage(err, status_code=400)
-
-    return jsonify(res)
-
-@app.route("/admin/user/list", methods=['GET'])
-@requires_auth
-def list_user():
-    conn = get_conn()
-    if not g.acl.is_admin():
-        return not_authorized("This user is not an administrator.")
-
-    res = map(lambda acl: acl.serialize(), adminControl.list_users(conn))
-
-    return jsonify(res)
-
-@app.route("/admin/user/delete", methods=['DELETE'])
-@requires_auth
-def delete_user():
-    conn = get_conn()
-    if not g.acl.is_admin():
-        return not_authorized("This user is not an administrator.")
-
-    username = request.args.get('username')
-    if not username:
-        raise InvalidUsage("Username should be specified as query paramter", username)
-    res = adminControl.delete_user(conn, username)
-    if res:
-        raise InvalidUsage(res, status_code=400)
-
-    return jsonify(res)
+    with redis_helper.get_resource() as r:
+        result = export_raw_data.create_export_task.schedule_export(r, d_filter, g.acl.username)
+        return jsonify(result)
     
 
 # This endpoint returns the same as get_permission but add some human readable fields.
