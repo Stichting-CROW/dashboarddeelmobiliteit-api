@@ -98,7 +98,7 @@ class DataFilter():
         return self.latlng
 
     def has_latlng(self):
-        return len(self.latlng) === 2
+        return len(self.latlng) == 2
 
     def get_geojson(self):
         return self.geojson
