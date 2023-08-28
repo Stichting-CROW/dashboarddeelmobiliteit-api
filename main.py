@@ -39,6 +39,10 @@ if "ip" in os.environ:
     conn_str += " host={} ".format(os.environ['ip'])
 if "password" in os.environ:
     conn_str += " user=deelfietsdashboard password={}".format(os.environ['password'])
+if "DB_HOST" in os.environ:
+    conn_str += " host={} ".format(os.environ['DB_HOST'])
+if "DB_PORT" in os.environ:
+    conn_str += " port={} ".format(os.environ['DB_PORT'])
 
 # conn = psycopg2.connect(conn_str)
 pgpool = SimpleConnectionPool(minconn=1, 
