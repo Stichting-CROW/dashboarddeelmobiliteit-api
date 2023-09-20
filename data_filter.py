@@ -103,6 +103,10 @@ class DataFilter():
     def get_geojson(self):
         return self.geojson
 
+    def add_geojson(self, args):
+        if args.get("geojson"):
+            self.geojson = args.get("geojson")
+
     def has_geojson(self):
         return self.geojson;
 
@@ -128,6 +132,7 @@ class DataFilter():
         filter.add_gmcode(args)
         filter.add_operators(args)
         filter.add_form_factor(args)
+        filter.add_geojson(args)
 
         return filter
 

@@ -28,6 +28,10 @@
 
     ssh root@167.99.219.233 -L 5431:10.133.75.95:5432
 
+- Start port forwarding for timescaledb:
+
+    ssh -L 5434:10.133.137.239:5432 root@164.92.222.16
+
 # How to run
 
     export password=X

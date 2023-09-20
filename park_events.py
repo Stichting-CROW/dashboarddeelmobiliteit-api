@@ -218,39 +218,27 @@ class ParkEvents():
     #
     # Example input:
     # 
-    # "name": "Arnhem Ketelstraat oneven zijde",
-    # "timestamp": "2022-10-24T00:00:00",
-    # "geojson": {
-    #   "type": "Polygon", 
-    #   "coordinates":  [
-    #     [
-    #       [5.90802,51.98173],
-    #       [5.90808,51.98171],
-    #       [5.90924,51.98199],
-    #       [5.90921,51.98202],
-    #       [5.90802,51.98173]
+    # { 
+    #   "name": "Arnhem Ketelstraat oneven zijde",
+    #   "timestamp": "2022-10-24T00:00:00Z",
+    #   "geojson": {
+    #     "type": "Polygon", 
+    #     "coordinates":  [
+    #       [
+    #         [5.90802,51.98173],
+    #         [5.90808,51.98171],
+    #         [5.90924,51.98199],
+    #         [5.90921,51.98202],
+    #         [5.90802,51.98173]
+    #       ]
     #     ]
-    #   ]
+    #   }
     # }
     #
-    # Example cURL call:
-    # curl -XPOST -H "Content-type: application/json" -d '{ 
-    # "timestamp": "2022-10-24T00:00:00",
-    # "geojson": {
-    #   "type": "Polygon", 
-    #   "coordinates":  [
-    #     [
-    #       [5.90802,51.98173],
-    #       [5.90808,51.98171],
-    #       [5.90924,51.98199],
-    #       [5.90921,51.98202],
-    #       [5.90802,51.98173]
-    #     ]
-    #   ]
-    # }' 'https://api.deelfietsdashboard.nl/dashboard-api/parkeertelling'
+    # Example cURL call for all of NL:
+    #     curl -XPOST -H "Content-type: application/json" -d '{"timestamp": "2023-09-19T00:00:00Z", "geojson": {"type": "Polygon", "coordinates": [[[1.882351, 50.649545], [7.023702, 49.333254], [8.108420, 53.729841], [2.235547, 53.721598]]]}}' 'http://127.0.0.1:5000/parkeertelling'
     #
     def parkeertelling(self, conn, d_filter):
-        conn = get_conn()
         cur = conn.cursor()
 
         stmt = """SELECT
@@ -265,7 +253,7 @@ class ParkEvents():
                 AND (end_time > %s OR end_time is null)
                 AND ST_WITHIN(
                     location,
-                    %s
+                    ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326)
                 )
             GROUP BY form_factor;
         """
@@ -273,7 +261,7 @@ class ParkEvents():
         cur.execute(stmt, (
             d_filter.get_timestamp(),# Start time
             d_filter.get_timestamp(),# End time
-            d_filter.get_geojson()   # GeoJSON area to search in
+            json.dumps(d_filter.get_geojson())# GeoJSON area to search in, converted to string
         ));
 
         return cur.fetchall()
