@@ -222,7 +222,7 @@ class ParkEvents():
     #   "name": "Arnhem Ketelstraat oneven zijde",
     #   "timestamp": "2022-10-24T00:00:00Z",
     #   "geojson": {
-    #     "type": "Polygon", 
+    #     "type": "Polygon",
     #     "coordinates":  [
     #       [
     #         [5.90802,51.98173],
@@ -237,6 +237,7 @@ class ParkEvents():
     #
     # Example cURL call for all of NL:
     #     curl -XPOST -H "Content-type: application/json" -d '{"timestamp": "2023-09-19T00:00:00Z", "geojson": {"type": "Polygon", "coordinates": [[[1.882351, 50.649545], [7.023702, 49.333254], [8.108420, 53.729841], [2.235547, 53.721598]]]}}' 'http://127.0.0.1:5000/parkeertelling'
+    #     curl -XPOST -H "Content-type: application/json" -d '{"timestamp": "2023-09-19T00:00:00Z", "geojson": {"type": "Polygon", "coordinates": [[[1.882351, 50.649545], [7.023702, 49.333254], [8.108420, 53.729841], [2.235547, 53.721598]]]}}' 'https://api.deelfietsdashboard.nl/dashboard-api/parkeertelling?apikey=X'
     #
     def parkeertelling(self, conn, d_filter):
         cur = conn.cursor()
