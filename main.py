@@ -33,7 +33,7 @@ import stats_v2.rental_stats as rental_stats
 from redis_helper import redis_helper
 
 # Initialisation
-conn_str = "dbname=deelfietsdashboard"
+conn_str = f"dbname={os.getenv('DB_NAME')}"
 
 if "DB_HOST" in os.environ:
     conn_str += " host={} ".format(os.environ['DB_HOST'])
@@ -50,7 +50,7 @@ pgpool = SimpleConnectionPool(minconn=1,
         maxconn=10, 
         dsn=conn_str)
 
-conn_str_timescale_db = "dbname=dashboardeelmobiliteit-timescaledb"
+conn_str_timescale_db = f"dbname={os.getenv('TIMESCALEDB_NAME')}"
 if os.getenv('DEV') == 'true':
     conn_str_timescale_db = "dbname=dashboardeelmobiliteit-timescaledb-dev"
 
