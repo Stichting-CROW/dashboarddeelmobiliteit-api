@@ -225,7 +225,6 @@ class DefaultACL:
         operators.append({"system_id": "check", "name": "CHECK"})
         operators.append({"system_id": "felyx", "name": "Felyx"})
         operators.append({"system_id": "deelfietsnederland", "name": "Deelfiets Nederland"})
-        operators.append({"system_id": "deelfietsnederland-testing", "name": "Deelfiets Nederland (testing)"})
         operators.append({"system_id": "keobike", "name": "Keobike"})
         operators.append({"system_id": "lime", "name": "Lime"})
         operators.append({"system_id": "baqme", "name": "BAQME"})
@@ -237,6 +236,7 @@ class DefaultACL:
         operators.append({"system_id": "bolt", "name": "Bolt"})
         operators.append({"system_id": "bondi", "name": "bondi"})
         operators.append({"system_id": "moveyou", "name": "MoveYou"})
+        operators.append({"system_id": "dott", "name": "Dott"})
         return operators
 
     def serialize(self, conn):
