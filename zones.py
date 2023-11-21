@@ -17,6 +17,18 @@ class Zones():
         cur.execute(stmt, (d_filter.get_gmcode(), include_custom_zones))
         conn.commit()
         return self.serialize_zones(cur.fetchall())
+    
+    def list_municipalities(self, conn):
+        cur = conn.cursor()
+        stmt = """
+            SELECT zone_id, zones.name, owner, municipality, zone_type
+            FROM zones
+            WHERE zone_type = 'municipality'
+            ORDER BY zones.name;
+        """
+        cur.execute(stmt)
+        conn.commit()
+        return self.serialize_zones(cur.fetchall())
 
     def get_zone(self, conn, zone_id):
         cur = conn.cursor()

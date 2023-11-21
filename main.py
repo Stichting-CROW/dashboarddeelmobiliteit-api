@@ -402,8 +402,14 @@ def get_public_zones():
 
     conn.commit()
     return jsonify(result)
-    # result = publicZonesAdapter.get_zones()
-    # return jsonify(result)
+
+@app.route("/public/municipalities", methods=['GET'])
+def get_municipalities():
+    conn = get_conn()
+    result = {}
+    result["municipalities"] = zoneAdapter.list_municipalities(conn) 
+    conn.commit()
+    return jsonify(result)
 
 @app.route("/public/vehicles_in_public_space", methods=['GET'])
 def get_vehicles_in_public_space():
