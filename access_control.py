@@ -217,7 +217,6 @@ class DefaultACL:
     def default_operators(self):
         operators = []
         operators.append({"system_id": "cykl", "name": "Cykl"})
-        operators.append({"system_id": "flickbike", "name": "Flickbike"})
         operators.append({"system_id": "donkey", "name": "Donkey Republic"})
         operators.append({"system_id": "mobike", "name": "Mobike"})
         operators.append({"system_id": "htm", "name": "HTM"})
