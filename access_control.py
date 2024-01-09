@@ -233,7 +233,6 @@ class DefaultACL:
         operators.append({"system_id": "uwdeelfiets", "name": "uwdeelfiets"})
         operators.append({"system_id": "hely", "name": "Hely"})
         operators.append({"system_id": "tier", "name": "TIER"})
-        operators.append({"system_id": "bird", "name": "Bird"})
         operators.append({"system_id": "bolt", "name": "Bolt"})
         operators.append({"system_id": "bondi", "name": "bondi"})
         operators.append({"system_id": "moveyou", "name": "GoAbout"})
