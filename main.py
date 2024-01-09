@@ -420,6 +420,13 @@ def get_vehicles_in_public_space():
     result["vehicles_in_public_space"] = parkEventsAdapter.get_public_park_events(conn, d_filter) 
     return jsonify(result)
 
+# @app.route("/public/get_municipality_based_on_latlng", methods=['GET'])
+# def get_municipality_based_on_latlng():
+#     conn = get_conn()
+#     d_filter = data_filter.DataFilter.build(request.args)
+#     result["municipality_based_on_latlng"] = zoneAdapter.list_zones(conn, d_filter) 
+#     conn.commit()
+#     return jsonify(result)
 
 @app.route("/public/filters", methods=['GET'])
 def get_filters():
@@ -695,3 +702,17 @@ def get_aggregated_rental_stats():
     conn.commit()
     return jsonify(result)
 
+@app.route("/parkeertelling", methods=['POST'])
+# @requires_auth
+def get_parkeertelling():
+    conn = get_conn()
+
+    try:
+        request_data = json.loads(request.data)
+    except:
+        raise InvalidUsage("Invalid JSON", status_code=400)
+
+    d_filter = data_filter.DataFilter.build(request_data)
+    result = parkEventsAdapter.parkeertelling(conn, d_filter)
+    conn.commit()
+    return jsonify(result)
