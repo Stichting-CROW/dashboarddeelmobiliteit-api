@@ -75,7 +75,7 @@ class DataFilter():
 
     def add_municipalities(self, args):
         if args.get("municipalities"):
-            self.operators = args.get("municipalities").split(",")
+            self.municipalities = args.get("municipalities").split(",")
 
     def get_municipalities(self):
         if len(self.municipalities) == 0:
@@ -86,7 +86,7 @@ class DataFilter():
         return len(self.municipalities) > 0
 
     def add_municipality(self, municipality):
-        self.operators.append(municipality)
+        self.municipalities.append(municipality)
 
     def has_operator_filter(self):
         return len(self.operators) > 0
