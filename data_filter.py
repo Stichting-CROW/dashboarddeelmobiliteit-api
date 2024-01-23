@@ -83,7 +83,7 @@ class DataFilter():
         return tuple(self.municipalities)
 
     def has_municipalities(self):
-        return len(self.municipalities)
+        return len(self.municipalities) > 0
 
     def add_municipality(self, municipality):
         self.operators.append(municipality)
