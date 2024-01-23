@@ -11,7 +11,9 @@ class DataFilter():
         self.end_time = None
         self.gm_code = None
         self.municipalities = []
+        self.latlng = []
         self.form_factors = []
+        self.geojson = {}
 
     def add_zones(self, args):
         if args.get("zone_ids"):
@@ -109,6 +111,22 @@ class DataFilter():
     def include_unknown_form_factors(self):
         return "unknown" in self.form_factors
 
+    def get_latlng(self):
+        return self.latlng
+
+    def has_latlng(self):
+        return len(self.latlng) == 2
+
+    def get_geojson(self):
+        return self.geojson
+
+    def add_geojson(self, args):
+        if args.get("geojson"):
+            self.geojson = args.get("geojson")
+
+    def has_geojson(self):
+        return self.geojson;
+
     def add_filters_based_on_acl(self, acl):
         if acl.organisation_type == "ADMIN":
             return
@@ -132,6 +150,7 @@ class DataFilter():
         filter.add_operators(args)
         filter.add_form_factor(args)
         filter.add_municipalities(args)
+        filter.add_geojson(args)
 
         return filter
 

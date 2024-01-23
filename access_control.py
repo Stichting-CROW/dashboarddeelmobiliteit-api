@@ -217,7 +217,6 @@ class DefaultACL:
     def default_operators(self):
         operators = []
         operators.append({"system_id": "cykl", "name": "Cykl"})
-        operators.append({"system_id": "flickbike", "name": "Flickbike"})
         operators.append({"system_id": "donkey", "name": "Donkey Republic"})
         operators.append({"system_id": "mobike", "name": "Mobike"})
         operators.append({"system_id": "htm", "name": "HTM"})
@@ -232,11 +231,10 @@ class DefaultACL:
         operators.append({"system_id": "uwdeelfiets", "name": "uwdeelfiets"})
         operators.append({"system_id": "hely", "name": "Hely"})
         operators.append({"system_id": "tier", "name": "TIER"})
-        operators.append({"system_id": "bird", "name": "Bird"})
         operators.append({"system_id": "bolt", "name": "Bolt"})
         operators.append({"system_id": "bondi", "name": "bondi"})
-        operators.append({"system_id": "moveyou", "name": "MoveYou"})
         operators.append({"system_id": "dott", "name": "Dott"})
+        operators.append({"system_id": "moveyou", "name": "GoAbout"})
         return operators
 
     def serialize(self, conn):
