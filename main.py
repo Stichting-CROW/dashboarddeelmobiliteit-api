@@ -337,8 +337,8 @@ def get_zones():
     conn = get_conn()
 
     d_filter = data_filter.DataFilter.build(request.args)
-    if not (d_filter.has_gmcode() or d_filter.has_zone_filter()):
-        raise InvalidUsage("No gm_code or zone_ids.", status_code=400)
+    if not (d_filter.has_zone_filter() or d_filter.has_municipalities()):
+        raise InvalidUsage("No gm_code (deprecated), zone_ids or municipalities.", status_code=400)
     
     result = {}
     if request.args.get("include_geojson") and request.args.get("include_geojson") == 'true':
@@ -391,8 +391,8 @@ def insert_zone():
 def get_public_zones():
     conn = get_conn()
     d_filter = data_filter.DataFilter.build(request.args)
-    if not (d_filter.has_gmcode() or d_filter.has_zone_filter()):
-        raise InvalidUsage("No gm_code or zone_ids.", status_code=400)
+    if not (d_filter.has_municipalities() or d_filter.has_zone_filter()):
+        raise InvalidUsage("No gm_code (deprecated) or zone_ids, municipalities.", status_code=400)
 
     result = {}
     if request.args.get("include_geojson") and request.args.get("include_geojson") == 'true':

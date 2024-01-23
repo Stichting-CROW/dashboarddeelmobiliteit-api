@@ -10,11 +10,11 @@ class Zones():
             FROM zones
             LEFT JOIN geographies
             USING (zone_id)
-            WHERE municipality = %s
+            WHERE municipality IN %s
             AND (true = %s or zone_type != 'custom')
             AND retire_date is null;
         """
-        cur.execute(stmt, (d_filter.get_gmcode(), include_custom_zones))
+        cur.execute(stmt, (d_filter.get_municipalities(), include_custom_zones))
         conn.commit()
         return self.serialize_zones(cur.fetchall())
     
@@ -52,10 +52,10 @@ class Zones():
         municipality, zone_type, ST_AsGeoJSON(area)
         FROM zones
         WHERE (false = %s or zone_id in %s)
-        AND (false = %s or municipality = %s)
+        AND (false = %s or municipality IN %s)
         """
         cur.execute(stmt, (d_filter.has_zone_filter(), d_filter.get_zones(),
-            d_filter.has_gmcode(), d_filter.get_gmcode()))
+            d_filter.has_municipalities(), d_filter.get_municipalities()))
         conn.commit()
         
         return self.serialize_zones(cur.fetchall())

@@ -10,6 +10,7 @@ class DataFilter():
         self.start_time = None
         self.end_time = None
         self.gm_code = None
+        self.municipalities = []
         self.form_factors = []
 
     def add_zones(self, args):
@@ -55,6 +56,7 @@ class DataFilter():
     def add_gmcode(self, args):
         if args.get("gm_code"):
             self.gm_code = args.get("gm_code")
+            self.add_municipality(self.gm_code)
 
     def get_gmcode(self):
         return self.gm_code
@@ -68,6 +70,21 @@ class DataFilter():
 
     def add_operator(self, operator_id):
         self.operators.append(operator_id)
+
+    def add_municipalities(self, args):
+        if args.get("municipalities"):
+            self.operators = args.get("municipalities").split(",")
+
+    def get_municipalities(self):
+        if len(self.municipalities) == 0:
+            return ('undefined',)
+        return tuple(self.municipalities)
+
+    def has_municipalities(self):
+        return len(self.municipalities)
+
+    def add_municipality(self, municipality):
+        self.operators.append(municipality)
 
     def has_operator_filter(self):
         return len(self.operators) > 0
@@ -114,6 +131,7 @@ class DataFilter():
         filter.add_gmcode(args)
         filter.add_operators(args)
         filter.add_form_factor(args)
+        filter.add_municipalities(args)
 
         return filter
 
