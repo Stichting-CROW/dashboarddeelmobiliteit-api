@@ -222,6 +222,7 @@ class DefaultACL:
         operators.append({"system_id": "htm", "name": "HTM"})
         operators.append({"system_id": "gosharing", "name": "GO Sharing"})
         operators.append({"system_id": "check", "name": "CHECK"})
+        operators.append({"system_id": "check_mdsv2", "name": "CHECK (MDS v2 experimenteel)"})
         operators.append({"system_id": "felyx", "name": "Felyx"})
         operators.append({"system_id": "deelfietsnederland", "name": "Deelfiets Nederland"})
         operators.append({"system_id": "keobike", "name": "Keobike"})

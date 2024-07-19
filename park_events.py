@@ -147,7 +147,8 @@ class ParkEvents():
                 WHEN datef < '1 HOUR' THEN 0
                 WHEN datef >= '1 HOUR' and datef < '1 DAY' THEN 1
                 WHEN datef >= '1 DAY' and datef < '4 DAYS' THEN 2
-                ELSE 3
+                WHEN datef >= '4 DAYS' and datef < '30 DAYS' THEN 3
+                ELSE 4
             END as bucket,
             SUM(sum_bikes) as number_of_park_events
             FROM
@@ -206,8 +207,8 @@ class ParkEvents():
     def serialize_park_event_stat_details(self, details):
         data = []
         if details == None:
-            return [0, 0, 0, 0]
-        for x in range(4):
+            return [0, 0, 0, 0, 0]
+        for x in range(5):
             if str(x) in details:
                 data.append(details[str(x)])
             else:

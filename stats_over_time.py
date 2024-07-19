@@ -28,12 +28,11 @@ class StatsOverTime():
 
         SELECT 
             CASE 
-                WHEN datef < '1 DAY' THEN 0
-                WHEN datef >= '1 DAY' and datef < '2 DAYS' THEN 1
-                WHEN datef >= '2 DAYS' and datef < '3 DAYS' THEN 2
-                WHEN datef >= '3 DAYS' and datef < '5 DAYS' THEN 3
-                WHEN datef >= '5 DAYS' and datef < '7 DAYS' THEN 4
-                ELSE 5
+                WHEN datef < '2 DAYS' THEN 0
+                WHEN datef >= '2 DAYS' and datef < '4 DAYS' THEN 1
+                WHEN datef >= '4 DAYS' and datef < '7 DAYS' THEN 2
+                WHEN datef >= '7 DAYS' and datef < '14 DAYS' THEN 3
+                ELSE 4
             END as bucket,
             SUM(sum_bikes) as number_of_park_events
         FROM
