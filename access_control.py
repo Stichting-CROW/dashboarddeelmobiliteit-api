@@ -218,7 +218,9 @@ class DefaultACL:
         operators = []
         operators.append({"system_id": "cykl", "name": "Cykl"})
         operators.append({"system_id": "donkey", "name": "Donkey Republic"})
+        operators.append({"system_id": "greenwheels", "name": "Greenwheels"})
         operators.append({"system_id": "mobike", "name": "Mobike"})
+        operators.append({"system_id": "mywheels", "name": "MyWheels"})
         operators.append({"system_id": "htm", "name": "HTM"})
         operators.append({"system_id": "gosharing", "name": "GO Sharing"})
         operators.append({"system_id": "check", "name": "CHECK"})
