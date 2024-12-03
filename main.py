@@ -19,11 +19,9 @@ import zones
 import park_events
 import data_filter
 import access_control
-import stats_over_time
 import rentals
 import report.generate_xlsx
 import export_raw_data.create_export_task
-import public_zoning_stats
 import audit_log
 import stats_active_users
 import stats_aggregated_availability
@@ -73,7 +71,6 @@ zoneAdapter = zones.Zones()
 rentalAdapter = rentals.Rentals()
 defaultAccessControl = access_control.DefaultACL()
 accessControl = access_control.AccessControl()
-statsOvertime = stats_over_time.StatsOverTime()
 statsAggregatedAvailability = stats_aggregated_availability.AggregatedStatsAvailability()
 statsAggregatedRentals = stats_aggregated_rentals.AggregatedStatsRentals()
 parkEventsAdapter = park_events.ParkEvents()
@@ -420,14 +417,6 @@ def get_vehicles_in_public_space():
     result["vehicles_in_public_space"] = parkEventsAdapter.get_public_park_events(conn, d_filter) 
     return jsonify(result)
 
-# @app.route("/public/get_municipality_based_on_latlng", methods=['GET'])
-# def get_municipality_based_on_latlng():
-#     conn = get_conn()
-#     d_filter = data_filter.DataFilter.build(request.args)
-#     result["municipality_based_on_latlng"] = zoneAdapter.list_zones(conn, d_filter) 
-#     conn.commit()
-#     return jsonify(result)
-
 @app.route("/public/filters", methods=['GET'])
 def get_filters():
     conn = get_conn()
@@ -470,18 +459,6 @@ def get_park_events():
     result["park_events"] = parkEventsAdapter.get_private_park_events(conn, d_filter) 
     return jsonify(result)
 
-@app.route("/park_events/stats")
-@requires_auth
-def get_park_events_stats():
-    conn = get_conn()
-    d_filter = data_filter.DataFilter.build(request.args)
-    authorized, error = g.acl.is_authorized(d_filter)
-    if not authorized:
-        return not_authorized(error)
-
-    result = {}
-    result["park_event_stats"] = parkEventsAdapter.get_stats(conn, d_filter) 
-    return jsonify(result)
 
 @app.route("/v2/park_events/stats")
 @requires_auth
@@ -505,24 +482,6 @@ def get_public_park_events_stats():
 
     result = {}
     result["park_event_stats"] = parkEventsAdapter.get_public_park_event_stats(conn, d_filter) 
-    return jsonify(result)
-
-@app.route("/stats/available_bikes")
-@requires_auth
-def get_available_bicycles():
-    conn = get_conn()
-    d_filter = data_filter.DataFilter.build(request.args)
-    authorized, error = g.acl.is_authorized(d_filter)
-    if not authorized:
-        return not_authorized(error)
-
-    if not d_filter.get_start_time():
-        raise InvalidUsage("No start_time specified", status_code=400)
-    if not d_filter.get_end_time():
-        raise InvalidUsage("No end_time specified", status_code=400)
-    
-    result = {}
-    result["available_bikes"] = statsOvertime.query_stats(conn, d_filter)
     return jsonify(result)
 
 @app.route("/stats/generate_report")
@@ -562,9 +521,8 @@ def get_raw_data():
         raise InvalidUsage("No end_time specified", status_code=400)
     
     # load filters
-    result = d_filter.add_filters_based_on_acl(g.acl)
-    if result != None:
-        return not_authorized(result) 
+    d_filter.add_filters_based_on_acl(g.acl)
+
     
     authorized_acl, error = g.acl.is_authorized(d_filter)
     if not authorized_acl:
@@ -716,3 +674,21 @@ def get_parkeertelling():
     result = parkEventsAdapter.parkeertelling(conn, d_filter)
     conn.commit()
     return jsonify(result)
+
+@app.route("/public/active_feeds")
+def get_active_feeds():
+    conn = get_conn()
+    cur = conn.cursor()
+    stmt = """
+     SELECT JSON_AGG(active_feeds.*) FROM (
+		SELECT feeds.feed_id, feeds.system_id, feeds.feed_type, feeds.last_time_succesfully_imported, last_time_succesfully_imported IS NOT NULL AND last_time_succesfully_imported > NOW() - INTERVAL '5 minutes' AS up
+		FROM feeds
+		WHERE is_active = true AND import_vehicles = true
+		ORDER BY feed_id
+    ) AS active_feeds;
+    """
+    cur.execute(stmt)
+
+    res = cur.fetchone()[0]
+    print(res)
+    return jsonify(res)
