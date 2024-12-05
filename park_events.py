@@ -191,10 +191,10 @@ class ParkEvents():
         stmt = """WITH park_event_stats AS 
             (SELECT zone_id,
             CASE 
-                WHEN datef < '1 HOUR' THEN 0
-                WHEN datef >= '1 HOUR' and datef < '1 DAY' THEN 1
-                WHEN datef >= '1 DAY' and datef < '4 DAYS' THEN 2
-                WHEN datef >= '4 DAYS' and datef < '30 DAYS' THEN 3
+                WHEN datef < '2 DAYS' THEN 0
+                WHEN datef >= '2 DAYS' and datef < '4 DAY' THEN 1
+                WHEN datef >= '4 DAYS' and datef < '7 DAYS' THEN 2
+                WHEN datef >= '7 DAYS' and datef < '14 DAYS' THEN 3
                 ELSE 4
             END as bucket,
             SUM(sum_bikes) as number_of_park_events
