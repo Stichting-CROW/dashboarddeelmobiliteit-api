@@ -82,7 +82,7 @@ class CustomJSONEncoder(JSONEncoder):
     def default(self, obj):
         try:
             if isinstance(obj, date):
-                return obj.isoformat() + "Z"
+                return obj.isoformat()
             if isinstance(obj, Decimal):
                 return float(obj)
             iterable = iter(obj)
