@@ -2,7 +2,7 @@ import json
 from bson import json_util
 import psycopg2.extras
 import zones
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import g
 
 class ParkEvents():
@@ -10,14 +10,14 @@ class ParkEvents():
         self.zones = zones.Zones()
 
     def get_private_park_events(self, conn, d_filter):
-        if d_filter.get_timestamp() <  datetime.now() - timedelta(hours=36):
+        if d_filter.get_timestamp() <  datetime.now(timezone.utc) - timedelta(hours=36):
             rows = self.get_park_events_long_term(conn, d_filter)
             return self.serialize_park_events(rows)
         rows = self.get_park_events_short_term(conn, d_filter)
         return self.serialize_park_events(rows)
     
     def get_public_park_events(self, conn, d_filter):
-        d_filter.timestamp = datetime.now()
+        d_filter.timestamp = datetime.now(timezone.utc) 
         rows = self.get_park_events_short_term(conn, d_filter)
         return self.serialize_public_park_events(rows)
 
@@ -182,7 +182,7 @@ class ParkEvents():
         return data
     
     def get_park_event_stats(self, conn, d_filter):
-        if d_filter.get_timestamp() <  datetime.now() - timedelta(hours=36):
+        if d_filter.get_timestamp() <  datetime.now(timezone.utc) - timedelta(hours=36):
             return self.get_park_event_stats_long_term(conn, d_filter)
         return self.get_park_event_stats_short_term(conn, d_filter)
 
@@ -386,7 +386,7 @@ class ParkEvents():
     #     curl -XPOST -H "Content-type: application/json" -d '{"timestamp": "2023-09-19T00:00:00Z", "geojson": {"type": "Polygon", "coordinates": [[[1.882351, 50.649545], [7.023702, 49.333254], [8.108420, 53.729841], [2.235547, 53.721598]]]}}' 'https://api.deelfietsdashboard.nl/dashboard-api/parkeertelling?apikey=X'
     #
     def parkeertelling(self, conn, d_filter):
-        if d_filter.get_timestamp() <  datetime.now() - timedelta(hours=36):
+        if d_filter.get_timestamp() <  datetime.now(timezone.utc) - timedelta(hours=36):
             return self.long_term_parkeertelling(conn, d_filter)
         return self.short_term_parkeertelling(conn, d_filter)
     

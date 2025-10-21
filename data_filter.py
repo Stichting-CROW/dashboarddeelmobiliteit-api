@@ -33,7 +33,7 @@ class DataFilter():
     def add_timestamp(self, args):
         if args.get("timestamp"):
             self.timestamp = datetime.datetime.strptime(
-                args.get("timestamp"), "%Y-%m-%dT%H:%M:%SZ")
+                args.get("timestamp"), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
 
     def get_timestamp(self):
         return self.timestamp
