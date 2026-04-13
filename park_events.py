@@ -33,17 +33,27 @@ class ParkEvents():
             park_events.system_id, 
             bike_id, 
 	        ST_Y(location), ST_X(location), 
-	        start_time, 
-            end_time, 
-            form_factor
+	        park_events.start_time, 
+            park_events.end_time, 
+            form_factor,
+            CASE
+                WHEN non_operational_event.start_time < %(timestamp)s
+                AND (non_operational_event.end_time > %(timestamp)s OR non_operational_event.end_time IS NULL)
+                THEN true
+                ELSE false
+            END AS is_non_operational
         FROM park_events
         LEFT JOIN vehicle_type 
         ON park_events.vehicle_type_id = vehicle_type.vehicle_type_id
+        LEFT JOIN non_operational_event 
+        ON park_events.park_event_id = non_operational_event.park_event_id
+        AND non_operational_event.start_time < %(timestamp)s
+        AND (non_operational_event.end_time > %(timestamp)s OR non_operational_event.end_time IS NULL)
         JOIN relevant_park_ids
         USING(park_event_id)
         WHERE
-        start_time < %(timestamp)s
-        AND (end_time > %(timestamp)s OR end_time is null)
+        park_events.start_time < %(timestamp)s
+        AND (park_events.end_time > %(timestamp)s OR park_events.end_time is null)
         AND
         (
             false = %(has_zone_filter)s 
@@ -90,15 +100,25 @@ class ParkEvents():
             park_events.system_id, 
             bike_id, 
 	        ST_Y(location), ST_X(location), 
-	        start_time, 
-            end_time, 
-            form_factor
+	        park_events.start_time, 
+            park_events.end_time, 
+            form_factor,
+            CASE
+                WHEN non_operational_event.start_time < %(timestamp)s
+                AND (non_operational_event.end_time > %(timestamp)s OR non_operational_event.end_time IS NULL)
+                THEN true
+                ELSE false
+            END AS is_non_operational
         FROM park_events
         LEFT JOIN vehicle_type 
         ON park_events.vehicle_type_id = vehicle_type.vehicle_type_id
+        LEFT JOIN non_operational_event 
+        ON park_events.park_event_id = non_operational_event.park_event_id
+        AND non_operational_event.start_time < %(timestamp)s
+        AND (non_operational_event.end_time > %(timestamp)s OR non_operational_event.end_time IS NULL)
         WHERE
-        start_time < %(timestamp)s
-        AND (end_time > %(timestamp)s OR end_time is null)
+        park_events.start_time < %(timestamp)s
+        AND (park_events.end_time > %(timestamp)s OR park_events.end_time is null)
         AND
         (
             false = %(has_zone_filter)s 
@@ -162,7 +182,8 @@ class ParkEvents():
         data["location"]["longitude"] = park_event[3]
         data["start_time"] = park_event[4]
         data["end_time"] = park_event[5]
-        data["form_factor"] = park_event[6]
+        data["form_factor"] = park_event[6] 
+        data["is_non_operational"] = park_event[7]  
         return data
 
     def serialize_public_park_events(self, park_events):
