@@ -50,7 +50,7 @@ class ParkEvents():
         AND non_operational_event.start_time < %(timestamp)s
         AND (non_operational_event.end_time > %(timestamp)s OR non_operational_event.end_time IS NULL)
         JOIN relevant_park_ids
-        USING(park_event_id)
+        ON park_events.park_event_id = relevant_park_ids.park_event_id
         WHERE
         park_events.start_time < %(timestamp)s
         AND (park_events.end_time > %(timestamp)s OR park_events.end_time is null)
@@ -309,7 +309,7 @@ class ParkEvents():
                         LEFT JOIN vehicle_type 
                         USING(vehicle_type_id)
                         JOIN relevant_park_ids
-                        USING(park_event_id)
+                        ON park_events.park_event_id = relevant_park_ids.park_event_id
                         WHERE
                         start_time < %(timestamp)s
                         AND (end_time > %(timestamp)s OR end_time is null)
