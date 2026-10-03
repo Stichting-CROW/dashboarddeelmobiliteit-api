@@ -1,5 +1,4 @@
 import json
-from bson import json_util
 import psycopg2.extras
 
 class Zones():
@@ -63,7 +62,7 @@ class Zones():
     def create_zone(self, conn, data):
         cur = conn.cursor()
 
-        if not self.check_if_zone_is_valid(data):
+        if not self.check_if_zone_is_valid(conn, data):
             return None, "Zone is outside municipality borders."
 
         stmt = """

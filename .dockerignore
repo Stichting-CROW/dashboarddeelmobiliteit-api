@@ -1,0 +1,31 @@
+# Git / tooling
+.git
+.gitignore
+.dockerignore
+
+# Virtual environments
+.venv
+ENV/
+venv/
+env/
+
+# Secrets / environment
+.env
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+log/

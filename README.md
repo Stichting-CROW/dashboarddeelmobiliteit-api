@@ -22,7 +22,7 @@
 - Install dependencies:
 
     pip install -r requirements.txt
-    pip install python-dotenv
+    pip install -r requirements-dev.txt
 
 - Start port forwarding for postgresql:
 
@@ -40,6 +40,15 @@
     source .env
     source ENV/bin/activate
     ./start_dev.sh
+
+The API is served with FastAPI (uvicorn in development, gunicorn with
+uvicorn workers in production). An interactive API documentation is
+available at http://localhost:5000/docs while the server is running.
+
+# How to run the tests
+
+    source ENV/bin/activate
+    python -m pytest tests -q
 
 # How to test API end points
 

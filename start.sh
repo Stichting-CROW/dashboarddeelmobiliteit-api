@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-uwsgi --ini uwsgi.ini
+gunicorn -w 20 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 main:app

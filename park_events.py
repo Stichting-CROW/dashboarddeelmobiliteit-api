@@ -1,9 +1,7 @@
 import json
-from bson import json_util
 import psycopg2.extras
 import zones
 from datetime import datetime, timedelta, timezone
-from flask import g
 
 class ParkEvents():
     def __init__(self):
