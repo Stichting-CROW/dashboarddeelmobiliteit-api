@@ -43,7 +43,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
             type=sha,format=long
-      - name: Build and push
+      - name: Build and push to docker registry
         uses: docker/build-push-action@v6
         with:
           context: .
