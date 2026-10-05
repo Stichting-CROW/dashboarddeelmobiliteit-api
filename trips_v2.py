@@ -1,6 +1,9 @@
 import psycopg2.extras
 import zones
 
+from trips import historical_trips_clause
+
+
 class Trips():
     def get_trip_origins(self, conn, d_filter):
         cur = conn.cursor()
@@ -23,7 +26,7 @@ class Trips():
         LEFT JOIN vehicle_type
         ON trips.vehicle_type_id = vehicle_type.vehicle_type_id
         WHERE 
-        start_time >= %s
+        end_time >= %s
         AND end_time <= %s
         AND (false = %s or 
             ST_Within(start_location, temp_a.filter_area))
@@ -31,12 +34,16 @@ class Trips():
         AND (false = %s or 
                 (form_factor in %s or (true = %s and form_factor is null))
             ) 
+        AND trips.trip_source = %s
         """
-        cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(), 
+        historical_clause, historical_params = historical_trips_clause(d_filter)
+        stmt += historical_clause
+        cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(),
             d_filter.get_end_time(), d_filter.has_zone_filter(),
             d_filter.has_operator_filter(), d_filter.get_operators(),
             d_filter.has_form_factor_filter(), d_filter.get_form_factors(),
-            d_filter.include_unknown_form_factors()))
+            d_filter.include_unknown_form_factors(), d_filter.get_trip_source())
+            + historical_params)
         return self.serialize_trip_events(cur.fetchall())
 
     def get_trip_destinations(self, conn, d_filter):
@@ -60,7 +67,7 @@ class Trips():
         LEFT JOIN vehicle_type
         ON trips.vehicle_type_id = vehicle_type.vehicle_type_id
         WHERE 
-        start_time >= %s
+        end_time >= %s
         AND end_time <= %s
         AND (false = %s or 
             ST_Within(end_location, (SELECT filter_area from temp_a)))
@@ -68,12 +75,16 @@ class Trips():
         AND (false = %s or 
                 (form_factor in %s or (true = %s and form_factor is null))
             ) 
+        AND trips.trip_source = %s
         """
-        cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(), 
+        historical_clause, historical_params = historical_trips_clause(d_filter)
+        stmt += historical_clause
+        cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(),
             d_filter.get_end_time(), d_filter.has_zone_filter(),
             d_filter.has_operator_filter(), d_filter.get_operators(),
             d_filter.has_form_factor_filter(), d_filter.get_form_factors(),
-            d_filter.include_unknown_form_factors()))
+            d_filter.include_unknown_form_factors(), d_filter.get_trip_source())
+            + historical_params)
         return self.serialize_trip_events(cur.fetchall())
 
     def query_stats(self, conn, zone_id, d_filter):
@@ -86,15 +97,19 @@ class Trips():
                 SUM(CASE WHEN ST_Within(end_location, temp_a.filter_area) THEN 1 ELSE 0 END)
             FROM trips, temp_a
             WHERE 
-            start_time >= %s
+            end_time >= %s
             AND end_time <= %s
             AND ((ST_Within(start_location, temp_a.filter_area) OR
                 ST_Within(end_location, temp_a.filter_area) ))
-            AND (false = %s or system_id IN %s) ;
+            AND (false = %s or system_id IN %s)
+            AND trips.trip_source = %s
         """
-        cur.execute(stmt, (zone_id, 
+        historical_clause, historical_params = historical_trips_clause(d_filter)
+        stmt += historical_clause + ";"
+        cur.execute(stmt, (zone_id,
             d_filter.get_start_time(), d_filter.get_end_time(),
-            d_filter.has_operator_filter(), d_filter.get_operators()))
+            d_filter.has_operator_filter(), d_filter.get_operators(),
+            d_filter.get_trip_source()) + historical_params)
 
         result = {}
         result["zone_id"] = zone_id

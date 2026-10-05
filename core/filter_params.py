@@ -16,6 +16,7 @@ def get_data_filter(
     start_time: Annotated[Optional[str], Query(pattern=TIMESTAMP_PATTERN)] = None,
     end_time: Annotated[Optional[str], Query(pattern=TIMESTAMP_PATTERN)] = None,
     timestamp: Annotated[Optional[str], Query(pattern=TIMESTAMP_PATTERN)] = None,
+    trip_source: Annotated[Optional[str], Query(pattern="^(vehicles|trips)$", description="Trip source: 'vehicles' (default) or 'trips'")] = None,
     gm_code: Annotated[Optional[str], Query(alias="gm_code", description="Deprecated, use municipalities")] = None,
 ) -> data_filter.DataFilter:
     args = {}
@@ -33,6 +34,8 @@ def get_data_filter(
         args["end_time"] = end_time
     if timestamp:
         args["timestamp"] = timestamp
+    if trip_source:
+        args["trip_source"] = trip_source
     if gm_code:
         args["gm_code"] = gm_code
     return data_filter.DataFilter.build(args)

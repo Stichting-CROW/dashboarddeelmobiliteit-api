@@ -48,3 +48,10 @@ def test_invalid_timestamp_format_returns_400(client):
     response = client.get("/public/park_events/stats", params=params)
     assert response.status_code == 400
     assert "message" in response.json()
+
+
+def test_invalid_trip_source_returns_400(client):
+    params = {"trip_source": "bogus"}
+    response = client.get("/public/park_events/stats", params=params)
+    assert response.status_code == 400
+    assert "message" in response.json()

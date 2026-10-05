@@ -1,14 +1,14 @@
 # How to install?
 
-- Install Python 3.9:
+- Install Python 3.14:
 
     https://realpython.com/intro-to-pyenv/
-    pyenv local 3.9.18
-    pyenv global 3.9.18
+    pyenv local 3.14.5
+    pyenv global 3.14.5
 
 - Create an Python environment:
 
-   pyenv virtualenv 3.9.18 ENV
+   pyenv virtualenv 3.14.5 ENV
 
 - Go into this environment:
 

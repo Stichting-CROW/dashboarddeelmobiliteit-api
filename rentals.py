@@ -1,6 +1,19 @@
 import psycopg2.extras
 import zones
 
+
+def historical_park_events_clause(d_filter):
+    if not d_filter.is_historical():
+        return "", ()
+    return """
+        AND park_event_id IN (
+            SELECT park_event_id
+            FROM park_event_on_date, UNNEST(park_event_ids) AS park_event_id
+            WHERE on_date BETWEEN %s::timestamptz::date AND %s::timestamptz::date
+        )
+    """, (d_filter.get_start_time(), d_filter.get_end_time())
+
+
 class Rentals():
     def __init__(self):
         self.zones = zones.Zones()
@@ -23,9 +36,12 @@ class Rentals():
             (ST_Within(location, temp_a.filter_area)))
         AND (false = %s or system_id IN %s) 
         """
-        cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(), 
+        historical_clause, historical_params = historical_park_events_clause(d_filter)
+        stmt += historical_clause
+        cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(),
             d_filter.get_end_time(), d_filter.has_zone_filter(),
-            d_filter.has_operator_filter(), d_filter.get_operators()))
+            d_filter.has_operator_filter(), d_filter.get_operators())
+            + historical_params)
         return self.serialize_rentals(cur.fetchall(), False)
 
     def get_end_trips(self, conn, d_filter):
@@ -40,15 +56,18 @@ class Rentals():
         SELECT system_id, bike_id, st_y(location), st_x(location), end_time
         FROM park_events, temp_a
         WHERE 
-        start_time >= %s
-        AND start_time <= %s
+        end_time >= %s
+        AND end_time <= %s
         AND (false = %s or 
             (ST_Within(location, temp_a.filter_area)))
         AND (false = %s or system_id IN %s) 
         """
-        cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(), 
+        historical_clause, historical_params = historical_park_events_clause(d_filter)
+        stmt += historical_clause
+        cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(),
             d_filter.get_end_time(), d_filter.has_zone_filter(),
-            d_filter.has_operator_filter(), d_filter.get_operators()))
+            d_filter.has_operator_filter(), d_filter.get_operators())
+            + historical_params)
         return self.serialize_rentals(cur.fetchall(), True)
 
     def query_stats_start_trip(self, conn, zone_id, d_filter):
@@ -63,11 +82,14 @@ class Rentals():
             end_time >= %s
             AND end_time <= %s
             AND (ST_Within(location, temp_a.filter_area))
-            AND (false = %s or system_id IN %s) ;
+            AND (false = %s or system_id IN %s)
         """
-        cur.execute(stmt, (zone_id, 
+        historical_clause, historical_params = historical_park_events_clause(d_filter)
+        stmt += historical_clause + ";"
+        cur.execute(stmt, (zone_id,
             d_filter.get_start_time(), d_filter.get_end_time(),
-            d_filter.has_operator_filter(), d_filter.get_operators()))
+            d_filter.has_operator_filter(), d_filter.get_operators())
+            + historical_params)
 
         result = cur.fetchone()
         if (result):
@@ -83,14 +105,17 @@ class Rentals():
             SELECT SUM(CASE WHEN ST_Within(location, temp_a.filter_area) THEN 1 ELSE 0 END)
             FROM park_events, temp_a
             WHERE 
-            start_time >= %s
-            AND start_time <= %s
+            end_time >= %s
+            AND end_time <= %s
             AND (ST_Within(location, temp_a.filter_area))
-            AND (false = %s or system_id IN %s) ;
+            AND (false = %s or system_id IN %s)
         """
-        cur.execute(stmt, (zone_id, 
+        historical_clause, historical_params = historical_park_events_clause(d_filter)
+        stmt += historical_clause + ";"
+        cur.execute(stmt, (zone_id,
             d_filter.get_start_time(), d_filter.get_end_time(),
-            d_filter.has_operator_filter(), d_filter.get_operators()))
+            d_filter.has_operator_filter(), d_filter.get_operators())
+            + historical_params)
 
         result = cur.fetchone()
         if (result):

@@ -1,6 +1,12 @@
 import datetime
 import json
 
+# Trips and park events are indexed by batch_aggregation for end_times within
+# the last three days. Queries that end before that window fall back to the
+# trip_on_date / park_event_on_date materialized views instead of relying on
+# those partial indexes.
+RECENT_INDEX_WINDOW = datetime.timedelta(days=3)
+
 # This class is a factory for generic filters.
 class DataFilter():
     def __init__(self):
@@ -14,6 +20,7 @@ class DataFilter():
         self.latlng = []
         self.form_factors = []
         self.geojson = {}
+        self.trip_source = "vehicles"
 
     def add_zones(self, args):
         if args.get("zone_ids"):
@@ -54,6 +61,13 @@ class DataFilter():
 
     def get_end_time(self):
         return self.end_time
+
+    def is_historical(self):
+        if not self.end_time:
+            return False
+        end_time = datetime.datetime.strptime(
+            self.end_time, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+        return end_time < datetime.datetime.now(datetime.timezone.utc) - RECENT_INDEX_WINDOW
 
     def add_gmcode(self, args):
         if args.get("gm_code"):
@@ -111,6 +125,13 @@ class DataFilter():
     def include_unknown_form_factors(self):
         return "unknown" in self.form_factors
 
+    def add_trip_source(self, args):
+        if args.get("trip_source"):
+            self.trip_source = args.get("trip_source")
+
+    def get_trip_source(self):
+        return self.trip_source
+
     def get_latlng(self):
         return self.latlng
 
@@ -151,6 +172,7 @@ class DataFilter():
         filter.add_form_factor(args)
         filter.add_municipalities(args)
         filter.add_geojson(args)
+        filter.add_trip_source(args)
 
         return filter
 

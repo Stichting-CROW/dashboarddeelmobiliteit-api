@@ -13,6 +13,12 @@ def test_empty_params_produce_default_filter():
     assert d_filter.get_start_time() is None
     assert d_filter.get_end_time() is None
     assert d_filter.get_gmcode() is None
+    assert d_filter.get_trip_source() == "vehicles"
+
+
+def test_trip_source_can_be_overridden():
+    d_filter = data_filter.DataFilter.build({"trip_source": "trips"})
+    assert d_filter.get_trip_source() == "trips"
 
 
 def test_comma_separated_lists_are_split():
@@ -53,6 +59,21 @@ def test_include_unknown_form_factors():
 
     other = data_filter.DataFilter.build({"form_factors": "bicycle"})
     assert not other.include_unknown_form_factors()
+
+
+def test_is_historical_based_on_end_time():
+    import datetime
+
+    def fmt(dt):
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    recent = data_filter.DataFilter.build({"end_time": fmt(now - datetime.timedelta(hours=1))})
+    old = data_filter.DataFilter.build({"end_time": fmt(now - datetime.timedelta(days=5))})
+
+    assert not recent.is_historical()
+    assert old.is_historical()
+    assert not data_filter.DataFilter.build({}).is_historical()
 
 
 def test_add_filters_based_on_acl():

@@ -1,6 +1,19 @@
 import psycopg2.extras
 import zones
 
+
+def historical_trips_clause(d_filter):
+    if not d_filter.is_historical():
+        return "", ()
+    return """
+        AND trip_id IN (
+            SELECT trip_id
+            FROM trip_on_date, UNNEST(trip_ids) AS trip_id
+            WHERE on_date BETWEEN %s::timestamptz::date AND %s::timestamptz::date
+        )
+    """, (d_filter.get_start_time(), d_filter.get_end_time())
+
+
 class Trips():
     def __init__(self):
         self.zones = zones.Zones()
@@ -26,7 +39,7 @@ class Trips():
         LEFT JOIN vehicle_type
         ON trips.vehicle_type_id = vehicle_type.vehicle_type_id
         WHERE 
-        start_time >= %s
+        end_time >= %s
         AND end_time <= %s
         AND (false = %s or 
             (ST_Within(start_location, temp_a.filter_area) OR
@@ -35,12 +48,16 @@ class Trips():
         AND (false = %s or 
                 (form_factor in %s or (true = %s and form_factor is null))
             ) 
+        AND trips.trip_source = %s
         """
-        cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(), 
+        historical_clause, historical_params = historical_trips_clause(d_filter)
+        stmt += historical_clause
+        cur.execute(stmt, (d_filter.get_zones(), d_filter.get_start_time(),
             d_filter.get_end_time(), d_filter.has_zone_filter(),
             d_filter.has_operator_filter(), d_filter.get_operators(),
             d_filter.has_form_factor_filter(), d_filter.get_form_factors(),
-            d_filter.include_unknown_form_factors()))
+            d_filter.include_unknown_form_factors(), d_filter.get_trip_source())
+            + historical_params)
         return self.serialize_trips(cur.fetchall())
 
     def query_stats(self, conn, zone_id, d_filter):
@@ -53,15 +70,19 @@ class Trips():
                 SUM(CASE WHEN ST_Within(end_location, temp_a.filter_area) THEN 1 ELSE 0 END)
             FROM trips, temp_a
             WHERE 
-            start_time >= %s
+            end_time >= %s
             AND end_time <= %s
             AND ((ST_Within(start_location, temp_a.filter_area) OR
                 ST_Within(end_location, temp_a.filter_area) ))
-            AND (false = %s or system_id IN %s) ;
+            AND (false = %s or system_id IN %s)
+            AND trips.trip_source = %s
         """
-        cur.execute(stmt, (zone_id, 
+        historical_clause, historical_params = historical_trips_clause(d_filter)
+        stmt += historical_clause + ";"
+        cur.execute(stmt, (zone_id,
             d_filter.get_start_time(), d_filter.get_end_time(),
-            d_filter.has_operator_filter(), d_filter.get_operators()))
+            d_filter.has_operator_filter(), d_filter.get_operators(),
+            d_filter.get_trip_source()) + historical_params)
 
         result = {}
         result["zone_id"] = zone_id

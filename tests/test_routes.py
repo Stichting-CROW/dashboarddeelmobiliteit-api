@@ -34,10 +34,22 @@ EXPECTED_ROUTES = {
 FRAMEWORK_ROUTES = {"/docs", "/docs/oauth2-redirect", "/openapi.json", "/redoc"}
 
 
+def iter_api_routes(routes):
+    for route in routes:
+        if isinstance(route, APIRoute):
+            yield route
+            continue
+        nested = getattr(route, "routes", None)
+        if not nested:
+            nested = getattr(getattr(route, "original_router", None), "routes", None)
+        if nested:
+            yield from iter_api_routes(nested)
+
+
 def collect_routes(app):
     routes = set()
-    for route in app.routes:
-        if isinstance(route, APIRoute) and route.path not in FRAMEWORK_ROUTES:
+    for route in iter_api_routes(app.routes):
+        if route.path not in FRAMEWORK_ROUTES:
             for method in route.methods:
                 routes.add((method, route.path))
     return routes
