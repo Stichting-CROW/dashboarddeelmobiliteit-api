@@ -63,7 +63,7 @@ def get_active_feeds(conn: DbConn):
      SELECT JSON_AGG(active_feeds.*) FROM (
 		SELECT feeds.feed_id, feeds.system_id, feeds.feed_type, feeds.last_time_succesfully_imported, last_time_succesfully_imported IS NOT NULL AND last_time_succesfully_imported > NOW() - INTERVAL '5 minutes' AS up
 		FROM feeds
-		WHERE is_active = true AND import_vehicles = true
+		WHERE is_active = true AND data_type = 'vehicles'
 		ORDER BY feed_id
     ) AS active_feeds;
     """
