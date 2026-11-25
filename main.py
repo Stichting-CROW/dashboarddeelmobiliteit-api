@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from core.database import lifespan
 from core.errors import register_exception_handlers
-from routers import account, park_events, public, rentals, reports, stats, trips, zones
+from routers import account, park_events, public, rentals, reports, stats, statistics, trips, zones
 
 app = FastAPI(
     title="Dashboard Deelmobiliteit API",
@@ -16,5 +16,6 @@ app.include_router(zones.router)
 app.include_router(park_events.router)
 app.include_router(public.router)
 app.include_router(stats.router)
+app.include_router(statistics.router)
 app.include_router(reports.router)
 app.include_router(account.router)

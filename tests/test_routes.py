@@ -29,6 +29,7 @@ EXPECTED_ROUTES = {
     ("GET", "/aggregated_stats/rentals"),
     ("GET", "/stats_v2/availability_stats"),
     ("GET", "/stats_v2/rental_stats"),
+    ("GET", "/stats_v3/statistics"),
 }
 
 FRAMEWORK_ROUTES = {"/docs", "/docs/oauth2-redirect", "/openapi.json", "/redoc"}
